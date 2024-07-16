@@ -47,6 +47,7 @@ int expand_macros(char *sfname, User_Output *out)
 {
 	FILE *fpin, *fpout;
 	char *dfname, *tmp;
+	/* memory allocation, file access, and error handling */
 	dfname = (char *)malloc(strlen(sfname) * sizeof(char));
 	if (!dfname)
 	{
@@ -57,6 +58,7 @@ int expand_macros(char *sfname, User_Output *out)
 		return 1;
 	}
 	strcpy(dfname, sfname);
+	/* destination file is terminated with ".am" (as in after macro) */
 	tmp = strstr(dfname, ".as");
 	tmp[2] = 'm';
 	fpin = fopen(sfname, "r");
