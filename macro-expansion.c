@@ -18,7 +18,7 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 			strcpy(out->message, ERROR_BASE_STRING);
 			strcat(out->message, filename);
 			strcat(out->message, extension);
-			strcat(out->message, ", couldn't allocate enough memory for the program.\n");
+			strcat(out->message, ": couldn't allocate enough memory for the program.\n");
 			return NULL;
 		}
 		extended_filename[0] = '\0';
@@ -32,7 +32,7 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 		out->type = ERROR_SOURCE_FILE_ACCESS;
 		strcpy(out->message, ERROR_BASE_STRING);
 		strcat(out->message, extended_filename);
-		strcat(out->message, ", couldn't access file for reading.\n");
+		strcat(out->message, ": couldn't access file for reading.\n");
 		return NULL;
 	}
 	fclose(fp);
@@ -46,7 +46,7 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 int expand_macros(char *sfname, User_Output *out)
 {
 	FILE *fpin, *fpout;
-	char *dfname, *tmp;
+	char *dfname, *line, *tmp;
 	/* memory allocation, file access, and error handling */
 	dfname = (char *)malloc(strlen(sfname) * sizeof(char));
 	if (!dfname)
@@ -54,7 +54,7 @@ int expand_macros(char *sfname, User_Output *out)
 		out->type = ERROR_DESTINATION_FILE_MEMORY_ALLOCATION;
 		strcpy(out->message, ERROR_BASE_STRING);
 		strcat(out->message, sfname);
-		strcat(out->message, ", couldn't create expanded macros file.\n");
+		strcat(out->message, ": couldn't create expanded macros file.\n");
 		return 1;
 	}
 	strcpy(dfname, sfname);
@@ -67,7 +67,7 @@ int expand_macros(char *sfname, User_Output *out)
 		out->type = ERROR_SOURCE_FILE_ACCESS;
 		strcpy(out->message, ERROR_BASE_STRING);
 		strcat(out->message, sfname);
-		strcat(out->message, ", couldn't access file for reading.\n");
+		strcat(out->message, ": couldn't access file for reading.\n");
 		return 1;
 	}
 	fpout = fopen(dfname, "w");
@@ -76,9 +76,24 @@ int expand_macros(char *sfname, User_Output *out)
 		out->type = ERROR_DESTINATION_FILE_ACCESS;
 		strcpy(out->message, ERROR_BASE_STRING);
 		strcat(out->message, dfname);
-		strcat(out->message, ", couldn't access file for reading.\n");
+		strcat(out->message, ": couldn't access file for reading.\n");
 		return 1;
 	}
+	line = (char *)malloc(MAX_CHARS_IN_LINE * sizeof(char));
+	if (!line)
+	{
+		out->type = ERROR_LINE_MEMORY_ALLOCATION;
+		strcpy(out->message, ERROR_BASE_STRING);
+		strcat(out->message, sfname);
+		strcat(out->message, ": couldn't allocate enough memory for the program.\n");
+		return 1;
+	}
+	expand_macros_memory_allocated(sfname, dfname, fpin, fpout, line, out);
+	/* sfname is freed in main */
+	free(dfname);
+	fclose(fpin);
+	fclose(fpout);
+	free(line);
 	return 0;
 }
 
@@ -86,4 +101,22 @@ void handle_errors_macro_expansion(User_Output *out)
 {
 	if (out->type)
 		printf("%s", out->message);
+}
+
+int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out)
+{
+	char *li;
+	while (fgets(line, MAX_CHARS_IN_LINE, fpin))
+	{
+		li = expand_macros_handle_label(sfname, dfname, fpin, fpout, line, out);
+		if (out->type != SUCCESS)
+			return 1;
+	}
+	return 0;
+}
+
+char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out)
+{
+
+	return NULL;
 }

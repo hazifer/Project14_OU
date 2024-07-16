@@ -10,6 +10,7 @@ enum
 	SUCCESS = 1,
 	ERROR_SOURCE_FILE_MEMORY_ALLOCATION,
 	ERROR_DESTINATION_FILE_MEMORY_ALLOCATION,
+	ERROR_LINE_MEMORY_ALLOCATION,
 	ERROR_SOURCE_FILE_ACCESS,
 	ERROR_DESTINATION_FILE_ACCESS,
 	MAX_FILENAME_LENGTH = 32,
@@ -29,11 +30,29 @@ typedef struct Macro {
 	char content[MAX_MACRO_LINES * MAX_CHARS_IN_LINE];
 } Macro;
 
+
+/* handle_errors_macro_expansion: prints the relevant macro expansion message
+ * types of messages/error handling:
+ * SUCCESS
+ * ERROR_SOURCE_FILE_MEMORY_ALLOCATION
+ * ERROR_DESTINATION_FILE_MEMORY_ALLOCATION
+ * ERROR_SOURCE_FILE_ACCESS
+ * ERROR_DESTINATION_FILE_ACCESS */
+void handle_errors_macro_expansion(User_Output *out);
+
 /* handle_filename_extension: adds the extension for the file name if needed
  * returns pointer to the file name with the extension added to it */
-char * handle_filename_extension(char *, char [], User_Output *);
+char * handle_filename_extension(char *sfname, char *dfname, User_Output *out);
 
-/* handle_errors_macro_expansion: prints the relevant macro expansion error message */
-void handle_errors_macro_expansion(User_Output *);
-
-int expand_macros(char *, User_Output *);
+/* expand_macros: expands the source file's macros into a similarly named file with an extension ".am"
+ * returns 0 on success
+ * returns 1 on failure
+ * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields */
+int expand_macros(char *sfname, User_Output *out);
+int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out);
+/* expand_macros_handle_label: writes a label from a given line into the output file
+ * returns a pointer to the first non blank character post the ':' from a label in the given line
+ * returns a pointer to the first non blank character when no label is found in the given line
+ * returns NULL when there is an issue with the label itself (such as reading multiple words prior to ':' 
+ * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields */
+char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out);
