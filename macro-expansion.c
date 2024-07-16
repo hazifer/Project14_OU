@@ -117,6 +117,20 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 
 char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out)
 {
-
+	char *end = strchr(line, ':');
+	while (*line == ' ' || *line == '\t')
+		++line;
+	fputc(fpout, '\t');
+	if (!end)
+		return line;
+	if (!isalpha(*line))
+	{
+		out->type = ERROR_LABEL_NOT_BEGIN_WITH_ALPHA;
+		strcpy(out->message, ERROR_BASE_STRING);
+		strcat(out->message, sfname);
+		strcat(out->message, ": label begins with a non alphabetic character in line\n\t");	
+		strcat(out->message, itoa(ln));
+		strcat(out->message, line);
+	}
 	return NULL;
 }

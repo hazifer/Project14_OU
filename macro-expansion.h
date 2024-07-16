@@ -13,6 +13,7 @@ enum
 	ERROR_LINE_MEMORY_ALLOCATION,
 	ERROR_SOURCE_FILE_ACCESS,
 	ERROR_DESTINATION_FILE_ACCESS,
+	ERROR_LABEL_NOT_BEGIN_WITH_ALPHA,
 	MAX_FILENAME_LENGTH = 32,
 	MAX_MACRO_NAME_LENGTH = 32,
 	MAX_MACRO_LINES = 50,
@@ -50,6 +51,7 @@ char * handle_filename_extension(char *sfname, char *dfname, User_Output *out);
  * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields */
 int expand_macros(char *sfname, User_Output *out);
 int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out);
+
 /* expand_macros_handle_label: writes a label from a given line into the output file
  * returns a pointer to the first non blank character post the ':' from a label in the given line
  * returns a pointer to the first non blank character when no label is found in the given line
