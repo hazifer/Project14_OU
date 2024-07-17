@@ -106,31 +106,95 @@ void handle_errors_macro_expansion(User_Output *out)
 int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out)
 {
 	char *li;
-	while (fgets(line, MAX_CHARS_IN_LINE, fpin))
+	int ln = 0;
+	while (fgets(line, MAX_CHARS_IN_LINE, fpin) && (li = expand_macros_handle_label(sfname, dfname, fpin, fpout, line, ++ln, out)))
 	{
-		li = expand_macros_handle_label(sfname, dfname, fpin, fpout, line, out);
-		if (out->type != SUCCESS)
-			return 1;
+		/* line was read, and li is not NULL */
+		if (*li == ';' || *li == '\n')
+			fputc('\n', fpout);
+		else
+		{
+
+			fputc('\n', fpout); /* REMOVE THIS */
+		}
 	}
+	if (out->type != SUCCESS)
+		return 1;
 	return 0;
 }
 
-char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out)
+char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int ln, User_Output *out)
 {
-	char *end = strchr(line, ':');
+	char *end = strchr(line, ':'), tmp;
+	char ln_str[MAX_LINES_IN_OUTPUT_FILE];
+	int li = 0;
 	while (*line == ' ' || *line == '\t')
 		++line;
-	fputc(fpout, '\t');
 	if (!end)
+	{
+		if (*line != ';' && *line != '\n')
+			fputc('\t', fpout);
 		return line;
+	}
 	if (!isalpha(*line))
 	{
+		itoa_base10(ln, ln_str);
 		out->type = ERROR_LABEL_NOT_BEGIN_WITH_ALPHA;
 		strcpy(out->message, ERROR_BASE_STRING);
 		strcat(out->message, sfname);
 		strcat(out->message, ": label begins with a non alphabetic character in line\n\t");	
-		strcat(out->message, itoa(ln));
+		strcat(out->message, ln_str);
 		strcat(out->message, line);
+		return NULL;
 	}
-	return NULL;
+	while (line + li < end)
+	{
+		if (*(line + li) == ' ' || *(line + li) == '\t')
+		{
+			itoa_base10(ln, ln_str);
+			out->type = ERROR_LABEL_MULTIPLE_WORDS_PRE_COLON;
+			strcpy(out->message, ERROR_BASE_STRING);
+			strcat(out->message, sfname);
+			strcat(out->message, ": incorrect label format, multiple words found pre colon\n\t");	
+			strcat(out->message, ln_str);
+			strcat(out->message, line);
+			return NULL;
+		}
+		++li;
+	}
+	/* line + li reached end which points to ':'
+	 * line points to first non blank character in line
+	 * end + 1 is the character after ':' (end + 1 might already point to '\0' in the last line of the file) */
+	tmp = *(end + 1);
+	*(end + 1) = '\0';
+	fputs(line, fpout);
+	*(end + 1) = tmp;
+	return line + li;
+}
+
+void itoa_base10(int n, char *n_str)
+{
+	/* assumes enough memory for n_str, assumes n >= 0 */
+	int i = 0;
+	while (n)
+	{
+		*(n_str + i) = n % 10;
+		++i;
+		n /= 10;
+	}
+	*(n_str + i) = '\0';
+	reverse_str(n_str);
+}
+
+void reverse_str(char *str)
+{
+	int len = strlen(str);
+	int i;
+	char tmp;
+	for (i = 0; i < len / 2; ++i)
+	{
+		tmp = str[i];
+		str[i] = str[len - i - 1];
+		str[len - i - 1] = tmp;
+	}
 }
