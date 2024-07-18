@@ -15,15 +15,17 @@ enum
 	ERROR_LINE_MEMORY_ALLOCATION,
 	ERROR_LABEL_NOT_BEGIN_WITH_ALPHA,
 	ERROR_LABEL_MULTIPLE_WORDS_PRE_COLON,
+	COMMAND,
+	COLLECT_MACRO_CONTENT,
+	MAX_LINE_DIGITS_IN_OUTPUT_FILE = 10,
 	MAX_FILENAME_LENGTH = 32,
 	MAX_MACRO_NAME_LENGTH = 32,
 	MAX_MACRO_LINES = 50,
-	MAX_CHARS_IN_LINE = 81,
-	MAX_LINES_IN_OUTPUT_FILE = 1000
+	MAX_CHARS_IN_LINE = 81
 };
 
 typedef struct User_Output {
-	int type;
+	int message_type;
 	int line;
 	char message[MAX_CHARS_IN_LINE];
 } User_Output;
@@ -53,10 +55,10 @@ char * handle_filename_extension(char *sfname, char *dfname, User_Output *out);
 int expand_macros(char *sfname, User_Output *out);
 int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out);
 
-/* expand_macros_handle_label: writes a label from a given line into the output file
+/* expand_macros_print_label: writes a label from a given line into the output file
  * returns a pointer to the first ':' from a label in the given line
  * returns a pointer to the first non blank character when no label is found in the given line
- * returns NULL when there is an issue with the label itself (such as reading multiple words prior to ':' 
+ * returns NULL when there is an issue with the label itself (such as reading multiple words prior to ':')
  * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields */
 char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int ln, User_Output *out);
 
@@ -64,3 +66,5 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
 void itoa_base10(int n, char *n_str);
 /* reverse_str: reverses an input string */
 void reverse_str(char *str);
+/* log_error: logs the relevant messages to print out to the user */
+void log_error(User_Output *out, char *sfname, char *line, int error_type, int line_number);

@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 	}
 	while (argc-- > 1)
 	{
-		out->type = 0;
+		out->message_type = 0;
 		printf("beginning macro expansion for input \"%s\"\n", argv[argc]);
 		fname = handle_filename_extension(argv[argc], ".as", out);
 		if (fname)
@@ -19,13 +19,13 @@ int main(int argc, char *argv[])
 			expand_macros(fname, out);
 			if (fname != argv[argc])
 				free(fname);
-			if (out->type == SUCCESS)
+			if (out->message_type == SUCCESS)
 			{
 				/* continue program for this file */
 			}
 		}
 		handle_errors_macro_expansion(out);
 	}
-	free (out);
+	free(out);
 	return 0;
 }
