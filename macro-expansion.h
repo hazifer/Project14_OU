@@ -15,6 +15,7 @@ enum
 	ERROR_LINE_MEMORY_ALLOCATION,
 	ERROR_LABEL_NOT_BEGIN_WITH_ALPHA,
 	ERROR_LABEL_MULTIPLE_WORDS_PRE_COLON,
+	ERROR_WORD_FOUND_PRE_MACRO_KEYWORD,
 	COMMAND,
 	COLLECT_MACRO_CONTENT,
 	MAX_LINE_DIGITS_IN_OUTPUT_FILE = 10,
@@ -59,7 +60,8 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
  * returns a pointer to the first ':' from a label in the given line
  * returns a pointer to the first non blank character when no label is found in the given line
  * returns NULL when there is an issue with the label itself (such as reading multiple words prior to ':')
- * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields */
+ * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields 
+ * also handles the first indentation of the line past the label (if exists) and if a label doesn't exist, written into the output file */
 char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int ln, User_Output *out);
 
 /* itoa_base10: converts an input integer to string and sets it into n_str */
@@ -68,3 +70,7 @@ void itoa_base10(int n, char *n_str);
 void reverse_str(char *str);
 /* log_error: logs the relevant messages to print out to the user */
 void log_error(User_Output *out, char *sfname, char *line, int error_type, int line_number);
+/* verify_till_macr_word: reads line and returns a pointer to the first occurrence of "macr " or "macr\t" in line if exists 
+ * returns NULL and raises an error of type ERROR_WORD_FOUND_PRE_MACRO_KEYWORD into out in case there a words prior to "macr " or "macr\t"
+ * returns NULL if it doesn't exist */
+char * verify_till_macr_word(char *line, User_Output *out);

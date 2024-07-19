@@ -3,6 +3,5 @@
 test
 	one tab
     spaces
-big xd
-label: that
+label: macr that
 label3: or that
