@@ -105,7 +105,7 @@ void handle_errors_macro_expansion(User_Output *out)
 int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out, Macro *macro_array)
 {
 	char *li; /* line indexe */
-	int line_number = 0, state = COMMAND, return_value;
+	int line_number = 0, state = STATE_COMMAND, return_value;
 	while (fgets(line, MAX_CHARS_IN_LINE, fpin) && (li = expand_macros_handle_label(sfname, dfname, fpin, fpout, line, ++line_number, out)))
 	{
 		/* line was read, and li is not NULL */
@@ -119,7 +119,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		if (*li == ':')
 			++li;
 		li = skip_blanks(li);
-		if (state == COMMAND)
+		if (state == STATE_COMMAND)
 		{
 			return_value = expand_macros_handle_command_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array);
 			if (return_value)
@@ -186,15 +186,21 @@ int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, F
 {
 	char *li;
 	char word[MAX_MACRO_NAME_LENGTH];
-	/* look for "macr " or "macr\t" statement FIRST in line (li is currently pointing to a non blank, and not ':') */
+	int macro_index;
+	/* look for "macr" statements FIRST in line (li is currently pointing to a non blank, and not ':') */
 	li = verify_till_macr_word(line, out);
 	if (li == NULL && out->message_type == ERROR_WORD_FOUND_PRE_MACRO_KEYWORD)
 		return ERROR_WORD_FOUND_PRE_MACRO_KEYWORD;
 	if (li == NULL)
 	{
-		/* make sure no " macr\n" exists */
 		/* check for already declared macro names against a single word in line, or output line */
 		li = skip_blanks(line);
+		read_word(li, word);
+		if ((macro_index = get_macro_name_index(word, macro_array)) >= 0)
+		{
+			expand_macro(fpout, macro_array, macro_index);
+			return STATE_MACRO_EXPANDED;
+		}
 		fputs(line, fpout);
 		return 0;
 	}
@@ -208,7 +214,7 @@ int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, F
 		return ERROR_MACRO_NAME_RESERVED_WORD;
 	if (!verify_macro_name_syntax(word))
 		return ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX;
-	if (!verify_macro_name_unique(word, macro_array))
+	if (get_macro_name_index(word, macro_array) >= 0)
 		return ERROR_MACRO_NAME_NOT_UNIQUE;
 	li += strlen(word);
 	if (read_word(li, word))
@@ -311,7 +317,7 @@ void log_error(User_Output *out, char *file_name, char *line, int error_type, in
 			strcat(out->message, ": couldn't allocate enough memory for the program.\n");
 			break;
 		case ERROR_DESTINATION_FILE_MEMORY_ALLOCATION:
-			strcat(out->message, ": couldn't create expanded macros file.\n");
+			strcat(out->message, ": couldn't allocate enough memory for the program.\n");
 			break;
 		case ERROR_MACRO_NAME_EMPTY:
 			strcat(out->message, ": empty macro name used in line\n\t");
@@ -380,16 +386,16 @@ char verify_macro_name_syntax(char *word)
 	return 1;
 }
 
-char verify_macro_name_unique(char *word, Macro *macro_array)
+char get_macro_name_index(char *word, Macro *macro_array)
 {
+	int index = 0;
 	while (macro_array->name[0])
 	{
-		printf("XD");
 		if (!strcmp(word, macro_array->name))
-			return 0;
-		++macro_array;
+			return index;
+		++macro_array, ++index;
 	}
-	return 1;
+	return -1;
 }
 
 Macro * allocate_macro_array_memory(Macro *macro_array, User_Output *out)
@@ -410,4 +416,9 @@ Macro * allocate_macro_array_memory(Macro *macro_array, User_Output *out)
 		return NULL; /* couldn't allocate enough memory for reallocation/allocation */
 	/* allocation of memory for each struct */
 	return temp_macro_array;
+}
+
+void expand_macro(FILE *fpout, Macro *macro_array, int macro_index)
+{
+
 }

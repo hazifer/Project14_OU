@@ -22,7 +22,8 @@ enum
 	ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX,
 	ERROR_MACRO_NAME_NOT_UNIQUE,
 	ERROR_EXCEEDED_MACRO_ARRAY_LIMIT,
-	COMMAND,
+	STATE_COMMAND,
+	STATE_MACRO_EXPANDED,
 	COLLECT_MACRO_CONTENT,
 	MAX_LINE_DIGITS_IN_OUTPUT_FILE = 10,
 	MAX_FILENAME_LENGTH = 32,
@@ -116,11 +117,11 @@ char verify_not_reserved(char *word);
  * returns 0 if it is not */
 char verify_macro_name_syntax(char *word);
 
-/* verify_macro_name_unique: verifies if the macro name is in unique, given an array of Macro types
+/* get_macro_name_index: given an array of Macro types, checks if word given is any Macro element's name field.
  * compares the input word to each element's name field from Macro array
- * returns 1 if it is unique (non of the elements have the same name)
- * returns 0 if it is not (one of the elements has the same name) */
-char verify_macro_name_unique(char *word, Macro *macro_array);
+ * returns -1 if it is unique (word isn't any of the elements)
+ * returns integer representing the index, if it is not (word is the same of a specific Macro's name field) */
+char get_macro_name_index(char *word, Macro *macro_array);
 
 /* allocate_macro_array_memory: allocates memory for an array of struct Macro elements.
  * each call increments the allocated member count by MACRO_ARRAY_INIT_SIZE
@@ -128,3 +129,6 @@ char verify_macro_name_unique(char *word, Macro *macro_array);
  * returns NULL on failure
  * raises an error of type ERROR_EXCEEDED_MACRO_ARRAY_LIMIT if there was an attemt to allocate too many elements, limited by MACRO_ARRAY_INIT_SIZE * MACRO_ARRAY_SIZE_MULTIPLIER_LIMIT */
 Macro * allocate_macro_array_memory(Macro *macro_array, User_Output *out);
+
+/* expand_macro: expands a macro's contents into the output file */
+void expand_macro(FILE *fpout, Macro *macro_array, int macro_index);

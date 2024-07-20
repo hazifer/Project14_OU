@@ -3,5 +3,5 @@
 test
 	one tab
     spaces
-label:macr big
-label3: or that
+label:macr bi
+labe	l3: or that
