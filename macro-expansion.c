@@ -29,10 +29,7 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 	fp = fopen(extended_filename, "r");
 	if (!fp)
 	{
-		out->message_type = ERROR_SOURCE_FILE_ACCESS;
-		strcpy(out->message, ERROR_BASE_STRING);
-		strcat(out->message, extended_filename);
-		strcat(out->message, ": couldn't access file for reading.\n");
+
 		return NULL;
 	}
 	fclose(fp);
@@ -51,10 +48,7 @@ int expand_macros(char *sfname, User_Output *out)
 	dfname = (char *)malloc(strlen(sfname) * sizeof(char));
 	if (!dfname)
 	{
-		out->message_type = ERROR_DESTINATION_FILE_MEMORY_ALLOCATION;
-		strcpy(out->message, ERROR_BASE_STRING);
-		strcat(out->message, sfname);
-		strcat(out->message, ": couldn't create expanded macros file.\n");
+		log_error(out, sfname, NULL, ERROR_DESTINATION_FILE_MEMORY_ALLOCATION, 0); /* line_number = 0 to ignore line in log_error */
 		return 1;
 	}
 	strcpy(dfname, sfname);
@@ -64,28 +58,19 @@ int expand_macros(char *sfname, User_Output *out)
 	fpin = fopen(sfname, "r");
 	if (!fpin)
 	{
-		out->message_type = ERROR_SOURCE_FILE_ACCESS;
-		strcpy(out->message, ERROR_BASE_STRING);
-		strcat(out->message, sfname);
-		strcat(out->message, ": couldn't access file for reading.\n");
+		log_error(out, sfname, NULL, ERROR_SOURCE_FILE_ACCESS, 0); /* line_number = 0 to ignore line in log_error */
 		return 1;
 	}
 	fpout = fopen(dfname, "w");
 	if (!fpout)
 	{
-		out->message_type = ERROR_DESTINATION_FILE_ACCESS;
-		strcpy(out->message, ERROR_BASE_STRING);
-		strcat(out->message, dfname);
-		strcat(out->message, ": couldn't access file for reading.\n");
+		log_error(out, dfname, NULL, ERROR_DESTINATION_FILE_ACCESS, 0); /* line_number = 0 to ignore line in log_error */
 		return 1;
 	}
 	line = (char *)malloc(MAX_CHARS_IN_LINE * sizeof(char));
 	if (!line)
 	{
-		out->message_type = ERROR_LINE_MEMORY_ALLOCATION;
-		strcpy(out->message, ERROR_BASE_STRING);
-		strcat(out->message, sfname);
-		strcat(out->message, ": couldn't allocate enough memory for the program.\n");
+		log_error(out, sfname, line, ERROR_PROGRAM_MEMORY_ALLOCATION, 0); /* line_number = 0 to ignore line in log_error */
 		return 1;
 	}
 	expand_macros_memory_allocated(sfname, dfname, fpin, fpout, line, out);
@@ -108,6 +93,7 @@ void handle_errors_macro_expansion(User_Output *out)
 int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out)
 {
 	char *li, *li2; /* line indexes */
+	char word[MAX_MACRO_NAME_LENGTH];
 	int line_number = 0, state = COMMAND;
 	while (fgets(line, MAX_CHARS_IN_LINE, fpin) && (li = expand_macros_handle_label(sfname, dfname, fpin, fpout, line, ++line_number, out)))
 	{
@@ -121,8 +107,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		/* not a comment nor a blank line */
 		if (*li == ':')
 			++li;
-		while (*li == ' ' || *li == '\t')
-			++li;
+		li = skip_blanks(li);
 		if (state == COMMAND)
 		{
 			/* look for "macr " or "macr\t" statement FIRST in line (li is currently pointing to a non blank, and not ':') */
@@ -134,9 +119,40 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 			}
 			if (li2 == NULL)
 			{
-				skip_blanks(
+				/* no "macr " or "macr\t" found, check for already declared macro names against a single word in line, or output line */
+				li = skip_blanks(li);
+				fputs(li, fpout);
+				continue;
 			}
-			/* point past "macr " or "macr\t" and get the word, treat it as a macro name */
+			/* point past "macr " or "macr\t" and get the word, treat it as a macro name if only one word exists */
+			li2 = li2 + strlen("macr");
+			li2 = skip_blanks(li2);
+			if (!read_word(li2, word))
+			{
+				log_error(out, sfname, line, ERROR_MACRO_NAME_EMPTY, line_number);
+				break;
+			}
+			if (!verify_not_reserved(word))
+			{
+				log_error(out, sfname, line, ERROR_MACRO_NAME_RESERVED_WORD, line_number);
+				break;
+			}
+			if (!verify_macro_name_syntax(word))
+			{
+				log_error(out, sfname, line, ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX, line_number);
+				break;
+			}
+			if (!verify_macro_name_unique(word, ))
+			{
+				log_error(out, sfname, line, ERROR_MACRO_NAME_NOT_UNIQUE, line_number);
+				break;
+			}
+			li2 += strlen(word);
+			if (read_word(li2, word))
+			{
+				log_error(out, sfname, line, ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION, line_number);
+				break;
+			}
 			/* change state if needed */
 			/* print already "collected" macros */
 		}
@@ -189,7 +205,7 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
 	tmp = *(end + 1);
 	*(end + 1) = '\0';
 	fputs(line, fpout);
-	fputc(line, '\t');
+	fputc('\t', fpout);
 	*(end + 1) = tmp;
 	return line + li;
 }
@@ -229,7 +245,16 @@ char * verify_till_macr_word(char *line, User_Output *out)
 	if (!macr_index)
 		macr_index = strstr(line, "macr\t");
 	if (!macr_index)
+		macr_index = strstr(line, "macr\n");
+	if (!macr_index)
+	{
 		return NULL;
+	}
+	if (line[strlen("macr\n")] == '\n')
+	{
+		out->message_type = ERROR_MACRO_NAME_EMPTY;
+		return NULL;
+	}
 	if (line < macr_index) /* line doesn't begin with "macr "/"macr\t" */
 	{
 		if (*(macr_index - 1) == ' ' || *(macr_index -1) == '\t') /* since line began with a non blank, this must mean there is atleast one word before "macr "/"macr\t" */
@@ -246,40 +271,101 @@ char * verify_till_macr_word(char *line, User_Output *out)
 	return line;
 }
 
-void log_error(User_Output *out, char *sfname, char *line, int error_type, int line_number)
+void log_error(User_Output *out, char *file_name, char *line, int error_type, int line_number)
 {
 	char ln_str[MAX_LINE_DIGITS_IN_OUTPUT_FILE];
-	itoa_base10(line_number, ln_str);
 	out->message_type = error_type;
-	out->line = line_number;
 	strcpy(out->message, ERROR_BASE_STRING);
-	strcat(out->message, sfname);
-	if (error_type == ERROR_LABEL_NOT_BEGIN_WITH_ALPHA)
+	strcat(out->message, file_name);
+	switch(error_type)
 	{
-		strcat(out->message, ": label begins with a non alphabetic character in line\n\t");	
+		case ERROR_LABEL_NOT_BEGIN_WITH_ALPHA:
+			strcat(out->message, ": label begins with a non alphabetic character in line\n\t");
+			break;
+		case ERROR_LABEL_MULTIPLE_WORDS_PRE_COLON:
+			strcat(out->message, ": incorrect label format, multiple words found pre colon in line\n\t");
+			break;
+		case ERROR_WORD_FOUND_PRE_MACRO_KEYWORD:
+			strcat(out->message, ": reserved keyword \"macr\" used in line\n\t");
+			break;
+		case ERROR_SOURCE_FILE_ACCESS:
+			strcat(out->message, ": couldn't access file for reading.\n");
+			break;
+		case ERROR_DESTINATION_FILE_ACCESS:
+			strcat(out->message, ": couldn't access file for writing.\n");
+			break;
+		case ERROR_PROGRAM_MEMORY_ALLOCATION:
+			strcat(out->message, ": couldn't allocate enough memory for the program.\n");
+			break;
+		case ERROR_SOURCE_FILE_MEMORY_ALLOCATION:
+			strcat(out->message, ": couldn't allocate enough memory for the program.\n");
+			break;
+		case ERROR_DESTINATION_FILE_MEMORY_ALLOCATION:
+			strcat(out->message, ": couldn't create expanded macros file.\n");
+			break;
+		case ERROR_MACRO_NAME_EMPTY:
+			strcat(out->message, ": empty macro name used in line\n\t");
+			break;
+		case ERROR_MACRO_NAME_RESERVED_WORD:
+			strcat(out->message, ": reserved word used as macro name in line\n\t");
+			break;
+		case ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION:
+			strcat(out->message, ": multiple words after macro declaration in line\n\t");
+			break;
+		case ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX:
+			strcat(out->message, ": ilegal macro name used (must begin with an alphabetic letter & cannot contain punctuations) in line\n\t");
+			break;
+		case ERROR_MACRO_NAME_NOT_UNIQUE:
+			strcat(out->message, ": macro declared multiple times, second declaration in line\n\t");
+			break;
+		default:
+			strcat(out->message, ": unknown error in line\n\t");
+			break;
+	}
+	if (line_number)
+	{
+		out->line = line_number;
+		itoa_base10(line_number, ln_str);
 		strcat(out->message, ln_str);
 		strcat(out->message, " - ");
 		strcat(out->message, line);
 	}
-	else if (error_type == ERROR_LABEL_MULTIPLE_WORDS_PRE_COLON)
-	{
-		strcat(out->message, ": incorrect label format, multiple words found pre colon in line\n\t");	
-		strcat(out->message, ln_str);
-		strcat(out->message, " - ");
-		strcat(out->message, line);
-	}
-	else if (error_type == ERROR_WORD_FOUND_PRE_MACRO_KEYWORD)
-	{
-		strcat(out->message, ": reserved keyword \"macr\" used in line\n\t");	
-		strcat(out->message, ln_str);
-		strcat(out->message, " - ");
-		strcat(out->message, line);
-	}
-	else
-	{
-		strcat(out->message, ": unknown error in line\n\t");	
-		strcat(out->message, ln_str);
-		strcat(out->message, " - ");
-		strcat(out->message, line);
-	}
+}
+
+char * skip_blanks(char *line)
+{
+	while (*line == ' ' || *line == '\t')
+		++line;
+	return line;
+}
+
+int read_word(char *line, char *word)
+{
+	int len = 0;
+	line = skip_blanks(line);
+	while ((word[len] = *line) && word[len] != ' ' && word[len] != '\t' && word[len] != '\n')
+		++line, ++len;
+	word[len] = '\0';
+	return len;
+}
+
+char verify_not_reserved(char *word)
+{
+	char *reserved_words[] = { "big", "nob", "test9", "haha" };
+	int arr_len = sizeof(reserved_words) / sizeof(char *);
+	for (arr_len--; arr_len >= 0; arr_len--)
+		if (!strcmp(reserved_words[arr_len], word))
+				return 0;
+	return 1;
+}
+
+char verify_macro_name_syntax(char *word)
+{
+	/* assumes word is terminated with '\0' and not '\n' */
+	if (isdigit(*word))
+		return 0;
+	while (*word)
+		if (ispunct(*word++))
+			return 0;
+	return 1;
 }

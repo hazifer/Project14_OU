@@ -12,10 +12,15 @@ enum
 	ERROR_SOURCE_FILE_ACCESS,
 	ERROR_DESTINATION_FILE_MEMORY_ALLOCATION,
 	ERROR_DESTINATION_FILE_ACCESS,
-	ERROR_LINE_MEMORY_ALLOCATION,
+	ERROR_PROGRAM_MEMORY_ALLOCATION,
 	ERROR_LABEL_NOT_BEGIN_WITH_ALPHA,
 	ERROR_LABEL_MULTIPLE_WORDS_PRE_COLON,
 	ERROR_WORD_FOUND_PRE_MACRO_KEYWORD,
+	ERROR_MACRO_NAME_EMPTY,
+	ERROR_MACRO_NAME_RESERVED_WORD,
+	ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION,
+	ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX,
+	ERROR_MACRO_NAME_NOT_UNIQUE,
 	COMMAND,
 	COLLECT_MACRO_CONTENT,
 	MAX_LINE_DIGITS_IN_OUTPUT_FILE = 10,
@@ -66,11 +71,32 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
 
 /* itoa_base10: converts an input integer to string and sets it into n_str */
 void itoa_base10(int n, char *n_str);
+
 /* reverse_str: reverses an input string */
 void reverse_str(char *str);
+
 /* log_error: logs the relevant messages to print out to the user */
-void log_error(User_Output *out, char *sfname, char *line, int error_type, int line_number);
+void log_error(User_Output *out, char *file_name, char *line, int error_type, int line_number);
+
 /* verify_till_macr_word: reads line and returns a pointer to the first occurrence of "macr " or "macr\t" in line if exists 
  * returns NULL and raises an error of type ERROR_WORD_FOUND_PRE_MACRO_KEYWORD into out in case there a words prior to "macr " or "macr\t"
  * returns NULL if it doesn't exist */
 char * verify_till_macr_word(char *line, User_Output *out);
+
+/* skip_blanks: skips blanks from line
+ * returns a pointer to the first non blank in line (\n and \0 aren't considered blanks) */
+char * skip_blanks(char *line);
+
+/* read_word: reads a single word from line and saves it into word 
+ * returns length of word read */
+int read_word(char *line, char *word);
+
+/* verify_not_reserved: verifies input word against a static set of reserved words.
+ * returns 1 if word is not one of the set
+ * returns 0 if it is part of the set */
+char verify_not_reserved(char *word);
+
+/* verify_macro_name_syntax: verifies if the macro name is in a correct format 
+ * returns 1 if it is
+ * returns 0 if it is not */
+char verify_macro_name_syntax(char *word);

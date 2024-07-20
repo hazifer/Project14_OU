@@ -3,5 +3,5 @@
 test
 	one tab
     spaces
-label: macr that
+label: macr test
 label3: or that
