@@ -21,13 +21,16 @@ enum
 	ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION,
 	ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX,
 	ERROR_MACRO_NAME_NOT_UNIQUE,
+	ERROR_EXCEEDED_MACRO_ARRAY_LIMIT,
 	COMMAND,
 	COLLECT_MACRO_CONTENT,
 	MAX_LINE_DIGITS_IN_OUTPUT_FILE = 10,
 	MAX_FILENAME_LENGTH = 32,
 	MAX_MACRO_NAME_LENGTH = 32,
 	MAX_MACRO_LINES = 50,
-	MAX_CHARS_IN_LINE = 81
+	MAX_CHARS_IN_LINE = 81,
+	MACRO_ARRAY_INIT_SIZE = 10,
+	MACRO_ARRAY_SIZE_MULTIPLIER_LIMIT = 10
 };
 
 typedef struct User_Output {
@@ -59,7 +62,7 @@ char * handle_filename_extension(char *sfname, char *dfname, User_Output *out);
  * returns 1 on failure
  * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields */
 int expand_macros(char *sfname, User_Output *out);
-int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out);
+int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out, Macro *macro_array);
 
 /* expand_macros_print_label: writes a label from a given line into the output file
  * returns a pointer to the first ':' from a label in the given line
@@ -67,7 +70,10 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
  * returns NULL when there is an issue with the label itself (such as reading multiple words prior to ':')
  * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields 
  * also handles the first indentation of the line past the label (if exists) and if a label doesn't exist, written into the output file */
-char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int ln, User_Output *out);
+char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out);
+
+/* expand_macros_handle_command_state: */
+int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array);
 
 /* itoa_base10: converts an input integer to string and sets it into n_str */
 void itoa_base10(int n, char *n_str);
@@ -100,3 +106,16 @@ char verify_not_reserved(char *word);
  * returns 1 if it is
  * returns 0 if it is not */
 char verify_macro_name_syntax(char *word);
+
+/* verify_macro_name_unique: verifies if the macro name is in unique, given an array of Macro types
+ * compares the input word to each element's name field from Macro array
+ * returns 1 if it is unique (non of the elements have the same name)
+ * returns 0 if it is not (one of the elements has the same name) */
+char verify_macro_name_unique(char *word, Macro *macro_array);
+
+/* allocate_macro_array_memory: allocates memory for an array of struct Macro elements.
+ * each call increments the allocated member count by MACRO_ARRAY_INIT_SIZE
+ * returns a pointer to the memory address of the allocated array
+ * returns NULL on failure
+ * raises an error of type ERROR_EXCEEDED_MACRO_ARRAY_LIMIT if there was an attemt to allocate too many elements, limited by MACRO_ARRAY_INIT_SIZE * MACRO_ARRAY_SIZE_MULTIPLIER_LIMIT */
+Macro * allocate_macro_array_memory(Macro *macro_array, User_Output *out);
