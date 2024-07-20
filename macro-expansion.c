@@ -104,9 +104,8 @@ void handle_errors_macro_expansion(User_Output *out)
 
 int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out, Macro *macro_array)
 {
-	char *li, *li2; /* line indexes */
-	char word[MAX_MACRO_NAME_LENGTH];
-	int line_number = 0, state = COMMAND;
+	char *li; /* line indexe */
+	int line_number = 0, state = COMMAND, return_value;
 	while (fgets(line, MAX_CHARS_IN_LINE, fpin) && (li = expand_macros_handle_label(sfname, dfname, fpin, fpout, line, ++line_number, out)))
 	{
 		/* line was read, and li is not NULL */
@@ -122,51 +121,12 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		li = skip_blanks(li);
 		if (state == COMMAND)
 		{
-			/* look for "macr " or "macr\t" statement FIRST in line (li is currently pointing to a non blank, and not ':') */
-			li2 = verify_till_macr_word(li, out);
-			if (li2 == NULL && out->message_type == ERROR_WORD_FOUND_PRE_MACRO_KEYWORD)
+			return_value = expand_macros_handle_command_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array);
+			if (return_value)
 			{
-				log_error(out, sfname, line, ERROR_WORD_FOUND_PRE_MACRO_KEYWORD, line_number);
+				log_error(out, sfname, line, return_value, line_number);
 				break;
 			}
-			if (li2 == NULL)
-			{
-				/* no "macr " or "macr\t" found, check for already declared macro names against a single word in line, or output line */
-				li = skip_blanks(li);
-				fputs(li, fpout);
-				continue;
-			}
-			/* point past "macr " or "macr\t" and get the word, treat it as a macro name if only one word exists */
-			li2 = li2 + strlen("macr");
-			li = li2 = skip_blanks(li2);
-			if (!read_word(li2, word))
-			{
-				log_error(out, sfname, line, ERROR_MACRO_NAME_EMPTY, line_number);
-				break;
-			}
-			if (!verify_not_reserved(word))
-			{
-				log_error(out, sfname, line, ERROR_MACRO_NAME_RESERVED_WORD, line_number);
-				break;
-			}
-			if (!verify_macro_name_syntax(word))
-			{
-				log_error(out, sfname, line, ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX, line_number);
-				break;
-			}
-			if (!verify_macro_name_unique(word, macro_array))
-			{
-				log_error(out, sfname, line, ERROR_MACRO_NAME_NOT_UNIQUE, line_number);
-				break;
-			}
-			li2 += strlen(word);
-			if (read_word(li2, word))
-			{
-				log_error(out, sfname, line, ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION, line_number);
-				break;
-			}
-			/* change state if needed */
-			/* print already "collected" macros */
 		}
 		else if (state == COLLECT_MACRO_CONTENT)
 		{
@@ -232,14 +192,16 @@ int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, F
 		return ERROR_WORD_FOUND_PRE_MACRO_KEYWORD;
 	if (li == NULL)
 	{
-		/* no "macr " or "macr\t" found, check for already declared macro names against a single word in line, or output line */
-		li = skip_blanks(li);
-		fputs(li, fpout);
+		/* make sure no " macr\n" exists */
+		/* check for already declared macro names against a single word in line, or output line */
+		li = skip_blanks(line);
+		fputs(line, fpout);
 		return 0;
 	}
 	/* point past "macr " or "macr\t" and get the word, treat it as a macro name if only one word exists */
 	li = li + strlen("macr");
 	li = skip_blanks(li);
+	
 	if (!read_word(li, word))
 		return ERROR_MACRO_NAME_EMPTY;
 	if (!verify_not_reserved(word))
@@ -286,35 +248,37 @@ void reverse_str(char *str)
 char * verify_till_macr_word(char *line, User_Output *out)
 {
 	/* assumes line is pointing to a non blank, past the label of the line */
+	char word[MAX_MACRO_NAME_LENGTH];
 	char *macr_index;
+	int word_length;
+	/* check if macro macr statement begins the line */
 	macr_index = strstr(line, "macr ");
 	if (!macr_index)
 		macr_index = strstr(line, "macr\t");
 	if (!macr_index)
 		macr_index = strstr(line, "macr\n");
+	if (line == macr_index)
+		return macr_index;
+	/* check for any type of macr statement after the startof the line */
+	word_length = read_word(line, word); /* the length of the read word allows to look for macr statements AFTER this word */
+	line += word_length;
 	if (!macr_index)
-	{
+		macr_index = strstr(line, " macr ");
+	if (!macr_index)
+		macr_index = strstr(line, "\tmacr ");
+	if (!macr_index)
+		macr_index = strstr(line, " macr\t");
+	if (!macr_index)
+		macr_index = strstr(line, "\tmacr\t");
+	if (!macr_index)
+		macr_index = strstr(line, " macr\n");
+	if (!macr_index)
+		macr_index = strstr(line, "\tmacr\n");
+	if (!macr_index)
 		return NULL;
-	}
-	if (line[strlen("macr\n")] == '\n')
-	{
-		out->message_type = ERROR_MACRO_NAME_EMPTY;
-		return NULL;
-	}
-	if (line < macr_index) /* line doesn't begin with "macr "/"macr\t" */
-	{
-		if (*(macr_index - 1) == ' ' || *(macr_index -1) == '\t') /* since line began with a non blank, this must mean there is atleast one word before "macr "/"macr\t" */
-		{
-			out->message_type = ERROR_WORD_FOUND_PRE_MACRO_KEYWORD;
-			return NULL;
-		}
-	}
-	/* if code reaches here, then a word of *macr syntax exists (* is a non blank, possibly multiple characters))
-	 * it is okay if it's not the first in line. it might or might not be first in line
-	 * checking either of cases is not in the scope of this function */
-	while (*line && *line != '\n' && (*line == ' ' || *line == '\t')) /* skip blanks */
-			++line;
-	return line;
+	/* macr_index is not NULL, since line was initially pointing to a non blank, there must be a word prior to the macr statement */
+	out->message_type = ERROR_WORD_FOUND_PRE_MACRO_KEYWORD;
+	return NULL;
 }
 
 void log_error(User_Output *out, char *file_name, char *line, int error_type, int line_number)
@@ -332,7 +296,7 @@ void log_error(User_Output *out, char *file_name, char *line, int error_type, in
 			strcat(out->message, ": incorrect label format, multiple words found pre colon in line\n\t");
 			break;
 		case ERROR_WORD_FOUND_PRE_MACRO_KEYWORD:
-			strcat(out->message, ": reserved keyword \"macr\" used in line\n\t");
+			strcat(out->message, ": atleast one word found before \"macr\" statement in line\n\t");
 			break;
 		case ERROR_SOURCE_FILE_ACCESS:
 			strcat(out->message, ": couldn't access file for reading.\n");

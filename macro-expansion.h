@@ -72,7 +72,16 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
  * also handles the first indentation of the line past the label (if exists) and if a label doesn't exist, written into the output file */
 char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out);
 
-/* expand_macros_handle_command_state: */
+/* expand_macros_handle_command_state: handles the COMMAND state in the macro expansion stage 
+ * returns errors according to each case:
+ * 	ERROR_WORD_FOUND_PRE_MACRO_KEYWORD
+ * 	ERROR_MACRO_NAME_EMPTY
+ * 	ERROR_MACRO_NAME_RESERVED_WORD
+ * 	ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX
+ * 	ERROR_MACRO_NAME_NOT_UNIQUE
+ * 	ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION 
+ * returns STATE_CHANGE_READ_MACRO_CONTENT when a correct format macro declaration was found (after uniqueness + syntax check)
+ * returns 0 when the line was printed, or a macro was expanded (non of the previous cases occurred) */
 int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array);
 
 /* itoa_base10: converts an input integer to string and sets it into n_str */
