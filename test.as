@@ -4,4 +4,8 @@ test
 	one tab
     spaces
 label:macr bi
-labe	l3: or that
+lab	el3: or tha
+tttmm
+endmacr
+
+bi
