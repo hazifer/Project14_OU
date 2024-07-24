@@ -170,8 +170,6 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
 		/* every line is indented one tab (the label part is "pulled" into the beginning of the line, so no blanks are printed pre-label 
 		 * in case of a comment or a new line here, it means we should skip this line (handled in the callee) 
 		 * otherwise we indent one tab as there is no label at all */
-		if (*line != ';' && *line != '\n')
-			fputc('\t', fpout);
 		return line;
 	}
 	/*
@@ -192,7 +190,6 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
 	tmp = *(end + 1);
 	*(end + 1) = '\0';
 	fputs(line, fpout);
-	fputc('\t', fpout);
 	*(end + 1) = tmp;
 	return end;
 }
@@ -500,7 +497,7 @@ Macro * allocate_macro_array_memory(Macro *macro_array, User_Output *out)
 
 void expand_macro(FILE *fpout, Macro *macro_array, int macro_index)
 {
-	add_tabs_after_newline(macro_array[macro_index].content);
+	/* add_tabs_after_newline(macro_array[macro_index].content); */
 	fputs(macro_array[macro_index].content, fpout);
 }
 
@@ -510,7 +507,7 @@ void add_tabs_after_newline(char *content)
 	/* is this even needed? maybe add tab to content expect in first line? */
 	char tmp;
 	char *new_end_index = content + strlen(content);
-	int tabs_to_add = count_newlines(content);
+	int tabs_to_add = count_newlines(content) - 1;
 	new_end_index += tabs_to_add;
 	*new_end_index = '\0';
 	while (tabs_to_add >= 0 && new_end_index > content)
@@ -525,6 +522,7 @@ void add_tabs_after_newline(char *content)
 		{
 			--tabs_to_add;
 			*(new_end_index - tabs_to_add - 1) = '\t';
+			--new_end_index;
 		}
 		--new_end_index;
 	}
