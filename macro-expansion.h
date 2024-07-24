@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "string_utility.h"
 
 #define ERROR_BASE_STRING 	"\terror in macro expansion for file "
 #define	SUCCESS_BASE_STRING	"\tsuccessfuly completed macro expansion for file "
@@ -86,11 +87,6 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
  * returns 0 when the line was printed, or a macro was expanded (non of the previous cases occurred) */
 int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index);
 int expand_macros_handle_collect_macro_content_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index);
-/* itoa_base10: converts an input integer to string and sets it into n_str */
-void itoa_base10(int n, char *n_str);
-
-/* reverse_str: reverses an input string */
-void reverse_str(char *str);
 
 /* log_error: logs the relevant messages to print out to the user */
 void log_error(User_Output *out, char *file_name, char *line, int error_type, int line_number);
@@ -100,14 +96,6 @@ void log_error(User_Output *out, char *file_name, char *line, int error_type, in
  * returns NULL if it doesn't exist */
 char * read_till_macr_keyword(char *line, User_Output *out);
 char * read_till_endmacr_keyword(char *line, User_Output *out);
-
-/* skip_blanks: skips blanks from line
- * returns a pointer to the first non blank in line (\n and \0 aren't considered blanks) */
-char * skip_blanks(char *line);
-
-/* read_word: reads a single word from line and saves it into word 
- * returns length of word read */
-int read_word(char *line, char *word);
 
 /* verify_not_reserved: verifies input word against a static set of reserved words.
  * returns 1 if word is not one of the set
@@ -135,12 +123,6 @@ Macro * increment_macro_array_index(Macro *macro_array, int next_macro_array, Us
 
 /* expand_macro: expands a macro's contents into the output file */
 void expand_macro(FILE *fpout, Macro *macro_array, int macro_index);
-
-/* add_tabs_after_newline: adds a tab character '\t' after every '\n' in a given content */
-void add_tabs_after_newline(char *content);
-
-/* count_newlines: counts and returns the number of '\n' characters in a given string */
-int count_newlines(char *content);
 
 /* is_newline_needed: computes and returns a boolean, according to state_value - true (1) or false (0) */
 char is_newline_needed(int state_value);
