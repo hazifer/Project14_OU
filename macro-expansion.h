@@ -13,18 +13,20 @@ enum
 	ERROR_DESTINATION_FILE_MEMORY_ALLOCATION,
 	ERROR_DESTINATION_FILE_ACCESS,
 	ERROR_PROGRAM_MEMORY_ALLOCATION,
-	ERROR_LABEL_NOT_BEGIN_WITH_ALPHA,
-	ERROR_LABEL_MULTIPLE_WORDS_PRE_COLON,
-	ERROR_WORD_FOUND_PRE_MACRO_KEYWORD,
+	ERROR_WORD_FOUND_PRE_MACR_KEYWORD,
+	ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD,
 	ERROR_MACRO_NAME_EMPTY,
 	ERROR_MACRO_NAME_RESERVED_WORD,
-	ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION,
+	ERROR_WORD_FOUND_AFTER_MACR_KEYWORD,
+	ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD,
 	ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX,
 	ERROR_MACRO_NAME_NOT_UNIQUE,
 	ERROR_EXCEEDED_MACRO_ARRAY_LIMIT,
 	STATE_COMMAND,
 	STATE_MACRO_EXPANDED,
-	COLLECT_MACRO_CONTENT,
+	STATE_COLLECT_MACRO_CONTENT,
+	MACRO_LINE_COLLECTED,
+	MACRO_EXPANDED,
 	MAX_LINE_DIGITS_IN_OUTPUT_FILE = 10,
 	MAX_FILENAME_LENGTH = 32,
 	MAX_MACRO_NAME_LENGTH = 32,
@@ -68,9 +70,8 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 /* expand_macros_print_label: writes a label from a given line into the output file
  * returns a pointer to the first ':' from a label in the given line
  * returns a pointer to the first non blank character when no label is found in the given line
- * returns NULL when there is an issue with the label itself (such as reading multiple words prior to ':')
- * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields 
- * also handles the first indentation of the line past the label (if exists) and if a label doesn't exist, written into the output file */
+ * also handles the first indentation of the line past the label (if exists) and if a label doesn't exist, written into the output file
+ * NO ERROR HANDLING */
 char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out);
 
 /* expand_macros_handle_command_state: handles the COMMAND state in the macro expansion stage 
@@ -83,8 +84,8 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
  * 	ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION 
  * returns STATE_CHANGE_READ_MACRO_CONTENT when a correct format macro declaration was found (after uniqueness + syntax check)
  * returns 0 when the line was printed, or a macro was expanded (non of the previous cases occurred) */
-int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array);
-
+int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index);
+int expand_macros_handle_collect_macro_content_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index);
 /* itoa_base10: converts an input integer to string and sets it into n_str */
 void itoa_base10(int n, char *n_str);
 
@@ -97,7 +98,8 @@ void log_error(User_Output *out, char *file_name, char *line, int error_type, in
 /* verify_till_macr_word: reads line and returns a pointer to the first occurrence of "macr " or "macr\t" in line if exists 
  * returns NULL and raises an error of type ERROR_WORD_FOUND_PRE_MACRO_KEYWORD into out in case there a words prior to "macr " or "macr\t"
  * returns NULL if it doesn't exist */
-char * verify_till_macr_word(char *line, User_Output *out);
+char * read_till_macr_keyword(char *line, User_Output *out);
+char * read_till_endmacr_keyword(char *line, User_Output *out);
 
 /* skip_blanks: skips blanks from line
  * returns a pointer to the first non blank in line (\n and \0 aren't considered blanks) */
@@ -129,6 +131,16 @@ char get_macro_name_index(char *word, Macro *macro_array);
  * returns NULL on failure
  * raises an error of type ERROR_EXCEEDED_MACRO_ARRAY_LIMIT if there was an attemt to allocate too many elements, limited by MACRO_ARRAY_INIT_SIZE * MACRO_ARRAY_SIZE_MULTIPLIER_LIMIT */
 Macro * allocate_macro_array_memory(Macro *macro_array, User_Output *out);
+Macro * increment_macro_array_index(Macro *macro_array, int next_macro_array, User_Output *out);
 
 /* expand_macro: expands a macro's contents into the output file */
 void expand_macro(FILE *fpout, Macro *macro_array, int macro_index);
+
+/* add_tabs_after_newline: adds a tab character '\t' after every '\n' in a given content */
+void add_tabs_after_newline(char *content);
+
+/* count_newlines: counts and returns the number of '\n' characters in a given string */
+int count_newlines(char *content);
+
+/* is_newline_needed: computes and returns a boolean, according to state_value - true (1) or false (0) */
+char is_newline_needed(int state_value);

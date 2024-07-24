@@ -105,10 +105,13 @@ void handle_errors_macro_expansion(User_Output *out)
 int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out, Macro *macro_array)
 {
 	char *li; /* line indexe */
-	int line_number = 0, state = STATE_COMMAND, return_value;
+	Macro *temp_macro_array; /* for future macro_array memory reallocations */
+	int  state = STATE_COMMAND, return_value, label_flag, line_number, next_macro_index;
+	line_number = next_macro_index = 0;
 	while (fgets(line, MAX_CHARS_IN_LINE, fpin) && (li = expand_macros_handle_label(sfname, dfname, fpin, fpout, line, ++line_number, out)))
 	{
 		/* line was read, and li is not NULL */
+		label_flag = 0;
 		if (*li == ';' || *li == '\n')
 		{
 			/* found a comment or a blank line - output a newline and skip this line */
@@ -117,20 +120,48 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		}
 		/* not a comment nor a blank line */
 		if (*li == ':')
+		{
 			++li;
+			label_flag = 1;
+		}
 		li = skip_blanks(li);
 		if (state == STATE_COMMAND)
 		{
-			return_value = expand_macros_handle_command_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array);
-			if (return_value)
+			return_value = expand_macros_handle_command_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array, next_macro_index);
+			if (label_flag && is_newline_needed(return_value))
+				fputc('\n', fpout);
+			if (!return_value || return_value == MACRO_EXPANDED)
+			{
+				state = STATE_COMMAND;
+				continue;
+			}
+			if (return_value != STATE_COLLECT_MACRO_CONTENT)
 			{
 				log_error(out, sfname, line, return_value, line_number);
 				break;
 			}
+			state = STATE_COLLECT_MACRO_CONTENT;
 		}
-		else if (state == COLLECT_MACRO_CONTENT)
+		else if (state == STATE_COLLECT_MACRO_CONTENT)
 		{
-
+			return_value = expand_macros_handle_collect_macro_content_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array, next_macro_index);
+			if (return_value == MACRO_LINE_COLLECTED)
+			{
+				continue;
+			}
+			if (return_value == ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD || return_value == ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD)
+			{
+				log_error(out, sfname, line, return_value, line_number);
+				break;
+			}
+			temp_macro_array = increment_macro_array_index(macro_array, ++next_macro_index, out);
+			if (!temp_macro_array && out->message_type == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT)
+			{
+				log_error(out, sfname, line, ERROR_EXCEEDED_MACRO_ARRAY_LIMIT, line_number);
+				break;
+			}
+			macro_array = temp_macro_array ? temp_macro_array : macro_array;
+			state = STATE_COMMAND;
 		}
 		/*
 		li = expand_macros_handle_macro(sfname, dfname, fpin, fpout, line, ln, out);
@@ -144,18 +175,15 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out)
 {
 	char *end = strchr(line, ':'), tmp;
-	int li = 0;
-	while (*line == ' ' || *line == '\t')
-		++line;
+	line = skip_blanks(line);
 	if (!end)
 	{
 		/* every line is indented one tab (the label part is "pulled" into the beginning of the line, so no blanks are printed pre-label 
 		 * in case of a comment or a new line here, it means we should skip this line (handled in the callee) 
 		 * otherwise we indent one tab as there is no label at all */
-		if (*line != ';' && *line != '\n')
-			fputc('\t', fpout);
 		return line;
 	}
+	/*
 	if (!isalpha(*line))
 	{
 		log_error(out, sfname, line, ERROR_LABEL_NOT_BEGIN_WITH_ALPHA, line_number);
@@ -169,28 +197,23 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
 			return NULL;
 		}
 		++li;
-	}
-	/* line + li reached end which points to ':'
-	 * line points to first non blank character in line
-	 * end + 1 is the character after ':' (end + 1 might already point to '\0' in the last line of the file) 
-	 * we handle indentation into output */
+	}*/
 	tmp = *(end + 1);
 	*(end + 1) = '\0';
 	fputs(line, fpout);
-	fputc('\t', fpout);
 	*(end + 1) = tmp;
-	return line + li;
+	return end;
 }
 
-int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array)
+int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index)
 {
 	char *li;
 	char word[MAX_MACRO_NAME_LENGTH];
 	int macro_index;
 	/* look for "macr" statements FIRST in line (li is currently pointing to a non blank, and not ':') */
-	li = verify_till_macr_word(line, out);
-	if (li == NULL && out->message_type == ERROR_WORD_FOUND_PRE_MACRO_KEYWORD)
-		return ERROR_WORD_FOUND_PRE_MACRO_KEYWORD;
+	li = read_till_macr_keyword(line, out);
+	if (li == NULL && out->message_type == ERROR_WORD_FOUND_PRE_MACR_KEYWORD)
+		return ERROR_WORD_FOUND_PRE_MACR_KEYWORD;
 	if (li == NULL)
 	{
 		/* check for already declared macro names against a single word in line, or output line */
@@ -198,13 +221,13 @@ int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, F
 		read_word(li, word);
 		if ((macro_index = get_macro_name_index(word, macro_array)) >= 0)
 		{
+			/* what if macro name and words past it? */
 			expand_macro(fpout, macro_array, macro_index);
-			return STATE_MACRO_EXPANDED;
+			return MACRO_EXPANDED;
 		}
 		fputs(line, fpout);
 		return 0;
 	}
-	/* point past "macr " or "macr\t" and get the word, treat it as a macro name if only one word exists */
 	li = li + strlen("macr");
 	li = skip_blanks(li);
 	
@@ -217,11 +240,28 @@ int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, F
 	if (get_macro_name_index(word, macro_array) >= 0)
 		return ERROR_MACRO_NAME_NOT_UNIQUE;
 	li += strlen(word);
-	if (read_word(li, word))
-		return ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION;
-	/* change state if needed */
-	/* print already "collected" macros */
-	return 0;
+	if (read_word(li, NULL))
+		return ERROR_WORD_FOUND_AFTER_MACR_KEYWORD;
+	strcpy((macro_array + next_macro_index)->name, word);
+	return STATE_COLLECT_MACRO_CONTENT;
+}
+
+int expand_macros_handle_collect_macro_content_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index)
+{
+	char *li;
+       	li = read_till_endmacr_keyword(line, out);
+	if (li == NULL && out->message_type == ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD)
+		return ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD;
+	if (li == NULL)
+	{
+		strcat((macro_array + next_macro_index)->content, line);
+		return MACRO_LINE_COLLECTED;
+	}
+	/* found endmacr, verified from start to endmacr index */
+	li += strlen("endmacr");
+	if (read_word(li, NULL))
+		return ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD;
+	return STATE_COMMAND;
 }
 
 void itoa_base10(int n, char *n_str)
@@ -251,7 +291,7 @@ void reverse_str(char *str)
 	}
 }
 
-char * verify_till_macr_word(char *line, User_Output *out)
+char * read_till_macr_keyword(char *line, User_Output *out)
 {
 	/* assumes line is pointing to a non blank, past the label of the line */
 	char word[MAX_MACRO_NAME_LENGTH];
@@ -283,7 +323,43 @@ char * verify_till_macr_word(char *line, User_Output *out)
 	if (!macr_index)
 		return NULL;
 	/* macr_index is not NULL, since line was initially pointing to a non blank, there must be a word prior to the macr statement */
-	out->message_type = ERROR_WORD_FOUND_PRE_MACRO_KEYWORD;
+	out->message_type = ERROR_WORD_FOUND_PRE_MACR_KEYWORD;
+	return NULL;
+}
+
+char * read_till_endmacr_keyword(char *line, User_Output *out)
+{
+	/* assumes line is pointing to a non blank, past the label of the line */
+	char word[MAX_MACRO_NAME_LENGTH];
+	char *endmacr_index;
+	int word_length;
+	/* check if macro macr statement begins the line */
+	endmacr_index = strstr(line, "endmacr ");
+	if (!endmacr_index)
+		endmacr_index = strstr(line, "endmacr\t");
+	if (!endmacr_index)
+		endmacr_index = strstr(line, "endmacr\n");
+	if (line == endmacr_index)
+		return endmacr_index;
+	/* check for any type of macr statement after the startof the line */
+	word_length = read_word(line, word); /* the length of the read word allows to look for macr statements AFTER this word */
+	line += word_length;
+	if (!endmacr_index)
+		endmacr_index = strstr(line, " endmacr ");
+	if (!endmacr_index)
+		endmacr_index = strstr(line, "\tendmacr ");
+	if (!endmacr_index)
+		endmacr_index = strstr(line, " endmacr\t");
+	if (!endmacr_index)
+		endmacr_index = strstr(line, "\tendmacr\t");
+	if (!endmacr_index)
+		endmacr_index = strstr(line, " endmacr\n");
+	if (!endmacr_index)
+		endmacr_index = strstr(line, "\tendmacr\n");
+	if (!endmacr_index)
+		return NULL;
+	/* macr_index is not NULL, since line was initially pointing to a non blank, there must be a word prior to the macr statement */
+	out->message_type = ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD;
 	return NULL;
 }
 
@@ -295,13 +371,14 @@ void log_error(User_Output *out, char *file_name, char *line, int error_type, in
 	strcat(out->message, file_name);
 	switch(error_type)
 	{
+		/*
 		case ERROR_LABEL_NOT_BEGIN_WITH_ALPHA:
 			strcat(out->message, ": label begins with a non alphabetic character in line\n\t");
 			break;
 		case ERROR_LABEL_MULTIPLE_WORDS_PRE_COLON:
 			strcat(out->message, ": incorrect label format, multiple words found pre colon in line\n\t");
-			break;
-		case ERROR_WORD_FOUND_PRE_MACRO_KEYWORD:
+			break;*/
+		case ERROR_WORD_FOUND_PRE_MACR_KEYWORD:
 			strcat(out->message, ": atleast one word found before \"macr\" statement in line\n\t");
 			break;
 		case ERROR_SOURCE_FILE_ACCESS:
@@ -325,14 +402,20 @@ void log_error(User_Output *out, char *file_name, char *line, int error_type, in
 		case ERROR_MACRO_NAME_RESERVED_WORD:
 			strcat(out->message, ": reserved word used as macro name in line\n\t");
 			break;
-		case ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION:
-			strcat(out->message, ": multiple words after macro declaration in line\n\t");
+		case ERROR_WORD_FOUND_AFTER_MACR_KEYWORD:
+			strcat(out->message, ": characters detected after macro declaration in line\n\t");
 			break;
 		case ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX:
 			strcat(out->message, ": ilegal macro name used (must begin with an alphabetic letter & cannot contain punctuations) in line\n\t");
 			break;
 		case ERROR_MACRO_NAME_NOT_UNIQUE:
 			strcat(out->message, ": macro declared multiple times, second declaration in line\n\t");
+			break;
+		case ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD:
+			strcat(out->message, ": characters detected before end of macro declaration in line\n\t");
+			break;
+		case ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD:
+			strcat(out->message, ": characters detected after end of macro declaration in line\n\t");
 			break;
 		default:
 			strcat(out->message, ": unknown error in line\n\t");
@@ -359,9 +442,15 @@ int read_word(char *line, char *word)
 {
 	int len = 0;
 	line = skip_blanks(line);
-	while ((word[len] = *line) && word[len] != ' ' && word[len] != '\t' && word[len] != '\n')
-		++line, ++len;
-	word[len] = '\0';
+	if (word)
+	{
+		while ((word[len] = *line) && word[len] != ' ' && word[len] != '\t' && word[len] != '\n')
+			++line, ++len;
+		word[len] = '\0';
+	}
+	else
+		while (*line && *line != ' ' && *line != '\t' && *line != '\n')
+			++line, ++len;
 	return len;
 }
 
@@ -418,7 +507,60 @@ Macro * allocate_macro_array_memory(Macro *macro_array, User_Output *out)
 	return temp_macro_array;
 }
 
+Macro * increment_macro_array_index(Macro *macro_array, int next_macro_index, User_Output *out)
+{
+	Macro *temp_macro_array = NULL;
+	if (next_macro_index && next_macro_index % MACRO_ARRAY_INIT_SIZE == 0)
+		temp_macro_array = allocate_macro_array_memory(macro_array, out);
+	return temp_macro_array;
+}
 void expand_macro(FILE *fpout, Macro *macro_array, int macro_index)
 {
+	/* add_tabs_after_newline(macro_array[macro_index].content); */
+	fputs(macro_array[macro_index].content, fpout);
+}
 
+void add_tabs_after_newline(char *content)
+{
+	/* what if the last character is '\n'? */
+	/* is this even needed? maybe add tab to content expect in first line? */
+	char tmp;
+	char *new_end_index = content + strlen(content);
+	int tabs_to_add = count_newlines(content) - 1;
+	new_end_index += tabs_to_add;
+	*new_end_index = '\0';
+	while (tabs_to_add >= 0 && new_end_index > content)
+	{
+		if (*(new_end_index - tabs_to_add - 1) != '\n')
+			{
+				tmp = *new_end_index;
+				*new_end_index = *(new_end_index - tabs_to_add - 1);
+				*(new_end_index - tabs_to_add - 1) = tmp;
+			}
+		else
+		{
+			--tabs_to_add;
+			*(new_end_index - tabs_to_add - 1) = '\t';
+			--new_end_index;
+		}
+		--new_end_index;
+	}
+}
+
+int count_newlines(char *content)
+{
+	int count = 0;
+	for (; *content; ++content)
+		if (*content == '\n')
+			++count;
+	return count;
+}
+
+char is_newline_needed(int state_value)
+{
+	if (!state_value)
+		return 1;
+	if (state_value == STATE_COLLECT_MACRO_CONTENT)
+		return 1;
+	return 0;
 }
