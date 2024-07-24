@@ -105,7 +105,9 @@ void handle_errors_macro_expansion(User_Output *out)
 int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out, Macro *macro_array)
 {
 	char *li; /* line indexe */
-	int line_number = 0, state = STATE_COMMAND, return_value, label_flag;
+	Macro *temp_macro_array; /* for future macro_array memory reallocations */
+	int  state = STATE_COMMAND, return_value, label_flag, line_number, next_macro_index;
+	line_number = next_macro_index = 0;
 	while (fgets(line, MAX_CHARS_IN_LINE, fpin) && (li = expand_macros_handle_label(sfname, dfname, fpin, fpout, line, ++line_number, out)))
 	{
 		/* line was read, and li is not NULL */
@@ -125,7 +127,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		li = skip_blanks(li);
 		if (state == STATE_COMMAND)
 		{
-			return_value = expand_macros_handle_command_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array);
+			return_value = expand_macros_handle_command_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array, next_macro_index);
 			if (label_flag && (!return_value || return_value == STATE_COLLECT_MACRO_CONTENT))
 				fputc('\n', fpout);
 			if (!return_value || return_value == STATE_MACRO_EXPANDED)
@@ -142,14 +144,23 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		}
 		else if (state == STATE_COLLECT_MACRO_CONTENT)
 		{
-			return_value = expand_macros_handle_collect_macro_content_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array);
+			return_value = expand_macros_handle_collect_macro_content_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array, next_macro_index);
 			if (return_value == MACRO_LINE_COLLECTED)
+			{
 				continue;
-			if (return_value != STATE_COMMAND)
+			}
+			if (return_value == ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD || return_value == ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD)
 			{
 				log_error(out, sfname, line, return_value, line_number);
 				break;
 			}
+			temp_macro_array = increment_macro_array_index(macro_array, ++next_macro_index, out);
+			if (!temp_macro_array && out->message_type == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT)
+			{
+				log_error(out, sfname, line, ERROR_EXCEEDED_MACRO_ARRAY_LIMIT, line_number);
+				break;
+			}
+			macro_array = temp_macro_array ? temp_macro_array : macro_array;
 			state = STATE_COMMAND;
 		}
 		/*
@@ -194,7 +205,7 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
 	return end;
 }
 
-int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array)
+int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index)
 {
 	char *li;
 	char word[MAX_MACRO_NAME_LENGTH];
@@ -230,12 +241,12 @@ int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, F
 		return ERROR_MACRO_NAME_NOT_UNIQUE;
 	li += strlen(word);
 	if (read_word(li, NULL))
-		return ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION;
-	strcpy(macro_array->name, word);
+		return ERROR_WORD_FOUND_AFTER_MACR_KEYWORD;
+	strcpy((macro_array + next_macro_index)->name, word);
 	return STATE_COLLECT_MACRO_CONTENT;
 }
 
-int expand_macros_handle_collect_macro_content_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array)
+int expand_macros_handle_collect_macro_content_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index)
 {
 	char *li;
        	li = read_till_endmacr_keyword(line, out);
@@ -243,15 +254,16 @@ int expand_macros_handle_collect_macro_content_state(char *sfname, char *dfname,
 		return ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD;
 	if (li == NULL)
 	{
-		strcat(macro_array->content, line);
+		strcat((macro_array + next_macro_index)->content, line);
 		return MACRO_LINE_COLLECTED;
 	}
 	/* found endmacr, verified from start to endmacr index */
 	li += strlen("endmacr");
 	if (read_word(li, NULL))
-		return ERROR_MULTIPLE_WORDS_AFTER_ENDMACRO_DECLARATION;
+		return ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD;
 	return STATE_COMMAND;
 }
+
 void itoa_base10(int n, char *n_str)
 {
 	/* assumes enough memory for n_str, assumes n >= 0 */
@@ -390,7 +402,7 @@ void log_error(User_Output *out, char *file_name, char *line, int error_type, in
 		case ERROR_MACRO_NAME_RESERVED_WORD:
 			strcat(out->message, ": reserved word used as macro name in line\n\t");
 			break;
-		case ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION:
+		case ERROR_WORD_FOUND_AFTER_MACR_KEYWORD:
 			strcat(out->message, ": characters detected after macro declaration in line\n\t");
 			break;
 		case ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX:
@@ -402,7 +414,7 @@ void log_error(User_Output *out, char *file_name, char *line, int error_type, in
 		case ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD:
 			strcat(out->message, ": characters detected before end of macro declaration in line\n\t");
 			break;
-		case ERROR_MULTIPLE_WORDS_AFTER_ENDMACRO_DECLARATION:
+		case ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD:
 			strcat(out->message, ": characters detected after end of macro declaration in line\n\t");
 			break;
 		default:
@@ -495,6 +507,13 @@ Macro * allocate_macro_array_memory(Macro *macro_array, User_Output *out)
 	return temp_macro_array;
 }
 
+Macro * increment_macro_array_index(Macro *macro_array, int next_macro_index, User_Output *out)
+{
+	Macro *temp_macro_array = NULL;
+	if (next_macro_index && next_macro_index % MACRO_ARRAY_INIT_SIZE == 0)
+		temp_macro_array = allocate_macro_array_memory(macro_array, out);
+	return temp_macro_array;
+}
 void expand_macro(FILE *fpout, Macro *macro_array, int macro_index)
 {
 	/* add_tabs_after_newline(macro_array[macro_index].content); */

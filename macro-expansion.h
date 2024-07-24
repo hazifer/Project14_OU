@@ -17,8 +17,8 @@ enum
 	ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD,
 	ERROR_MACRO_NAME_EMPTY,
 	ERROR_MACRO_NAME_RESERVED_WORD,
-	ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION,
-	ERROR_MULTIPLE_WORDS_AFTER_ENDMACRO_DECLARATION,
+	ERROR_WORD_FOUND_AFTER_MACR_KEYWORD,
+	ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD,
 	ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX,
 	ERROR_MACRO_NAME_NOT_UNIQUE,
 	ERROR_EXCEEDED_MACRO_ARRAY_LIMIT,
@@ -83,8 +83,8 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
  * 	ERROR_MULTIPLE_WORDS_AFTER_MACRO_DECLARATION 
  * returns STATE_CHANGE_READ_MACRO_CONTENT when a correct format macro declaration was found (after uniqueness + syntax check)
  * returns 0 when the line was printed, or a macro was expanded (non of the previous cases occurred) */
-int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array);
-int expand_macros_handle_collect_macro_content_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array);
+int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index);
+int expand_macros_handle_collect_macro_content_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index);
 /* itoa_base10: converts an input integer to string and sets it into n_str */
 void itoa_base10(int n, char *n_str);
 
@@ -130,6 +130,7 @@ char get_macro_name_index(char *word, Macro *macro_array);
  * returns NULL on failure
  * raises an error of type ERROR_EXCEEDED_MACRO_ARRAY_LIMIT if there was an attemt to allocate too many elements, limited by MACRO_ARRAY_INIT_SIZE * MACRO_ARRAY_SIZE_MULTIPLIER_LIMIT */
 Macro * allocate_macro_array_memory(Macro *macro_array, User_Output *out);
+Macro * increment_macro_array_index(Macro *macro_array, int next_macro_array, User_Output *out);
 
 /* expand_macro: expands a macro's contents into the output file */
 void expand_macro(FILE *fpout, Macro *macro_array, int macro_index);
