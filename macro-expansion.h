@@ -26,6 +26,7 @@ enum
 	STATE_MACRO_EXPANDED,
 	STATE_COLLECT_MACRO_CONTENT,
 	MACRO_LINE_COLLECTED,
+	MACRO_EXPANDED,
 	MAX_LINE_DIGITS_IN_OUTPUT_FILE = 10,
 	MAX_FILENAME_LENGTH = 32,
 	MAX_MACRO_NAME_LENGTH = 32,
@@ -140,3 +141,6 @@ void add_tabs_after_newline(char *content);
 
 /* count_newlines: counts and returns the number of '\n' characters in a given string */
 int count_newlines(char *content);
+
+/* is_newline_needed: computes and returns a boolean, according to state_value - true (1) or false (0) */
+char is_newline_needed(int state_value);

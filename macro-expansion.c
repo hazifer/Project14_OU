@@ -128,9 +128,9 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		if (state == STATE_COMMAND)
 		{
 			return_value = expand_macros_handle_command_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array, next_macro_index);
-			if (label_flag && (!return_value || return_value == STATE_COLLECT_MACRO_CONTENT))
+			if (label_flag && is_newline_needed(return_value))
 				fputc('\n', fpout);
-			if (!return_value || return_value == STATE_MACRO_EXPANDED)
+			if (!return_value || return_value == MACRO_EXPANDED)
 			{
 				state = STATE_COMMAND;
 				continue;
@@ -223,7 +223,7 @@ int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, F
 		{
 			/* what if macro name and words past it? */
 			expand_macro(fpout, macro_array, macro_index);
-			return 0;
+			return MACRO_EXPANDED;
 		}
 		fputs(line, fpout);
 		return 0;
@@ -554,4 +554,13 @@ int count_newlines(char *content)
 		if (*content == '\n')
 			++count;
 	return count;
+}
+
+char is_newline_needed(int state_value)
+{
+	if (!state_value)
+		return 1;
+	if (state_value == STATE_COLLECT_MACRO_CONTENT)
+		return 1;
+	return 0;
 }

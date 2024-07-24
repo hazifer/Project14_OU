@@ -1,6 +1,7 @@
 
 
-test
+label1:
+biglabel:test
 one tab
 spaces
 bi
@@ -13,10 +14,10 @@ bi16
 13
 12
 11
-10
+label3:10
 9
 8
-7
+test:7
 6
 5
 4
