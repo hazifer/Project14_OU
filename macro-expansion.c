@@ -157,9 +157,6 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 			macro_array = temp_macro_array ? temp_macro_array : macro_array;
 			state = STATE_COMMAND;
 		}
-		/*
-		li = expand_macros_handle_macro(sfname, dfname, fpin, fpout, line, ln, out);
-		fputc('\n', fpout);*/ /* REMOVE THIS */
 	}
 	if (out->message_type != SUCCESS)
 		return 1;
@@ -171,27 +168,7 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
 	char *end = strchr(line, ':'), tmp;
 	line = skip_blanks(line);
 	if (!end)
-	{
-		/* every line is indented one tab (the label part is "pulled" into the beginning of the line, so no blanks are printed pre-label 
-		 * in case of a comment or a new line here, it means we should skip this line (handled in the callee) 
-		 * otherwise we indent one tab as there is no label at all */
 		return line;
-	}
-	/*
-	if (!isalpha(*line))
-	{
-		log_error(out, sfname, line, ERROR_LABEL_NOT_BEGIN_WITH_ALPHA, line_number);
-		return NULL;
-	}
-	while (line + li < end)
-	{
-		if (*(line + li) == ' ' || *(line + li) == '\t')
-		{
-			log_error(out, sfname, line, ERROR_LABEL_NOT_BEGIN_WITH_ALPHA, line_number);
-			return NULL;
-		}
-		++li;
-	}*/
 	tmp = *(end + 1);
 	*(end + 1) = '\0';
 	fputs(line, fpout);
@@ -215,7 +192,9 @@ int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, F
 		read_word(li, word);
 		if ((macro_index = get_macro_name_index(word, macro_array)) >= 0)
 		{
-			/* what if macro name and words past it? */
+			li += strlen(word);
+			if (read_word(li, NULL))
+				return ERROR_WORD_FOUND_AFTER_MACRO_NAME;
 			expand_macro(fpout, macro_array, macro_index);
 			return MACRO_EXPANDED;
 		}

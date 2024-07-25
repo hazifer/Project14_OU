@@ -54,6 +54,9 @@ void log_error(User_Output *out, char *file_name, char *line, int error_type, in
 		case ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD:
 			strcat(out->message, ": characters detected after end of macro declaration in line\n\t");
 			break;
+		case ERROR_WORD_FOUND_AFTER_MACRO_NAME:
+			strcat(out->message, ": characters detected after macro name in line\n\t");
+			break;
 		default:
 			strcat(out->message, ": unknown error in line\n\t");
 			break;
@@ -70,6 +73,7 @@ void log_error(User_Output *out, char *file_name, char *line, int error_type, in
 
 void handle_errors_macro_expansion(User_Output *out)
 {
+	/* should be done in a while for multiple errors */
 	if (out->message_type)
 		printf("%s", out->message);
 }
