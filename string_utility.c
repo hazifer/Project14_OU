@@ -1,4 +1,3 @@
-#include <string.h>
 #include "string_utility.h"
 
 void itoa_base10(int n, char *n_str)

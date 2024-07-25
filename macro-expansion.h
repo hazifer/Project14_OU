@@ -1,61 +1,11 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
-#include "string_utility.h"
-
-#define ERROR_BASE_STRING 	"\terror in macro expansion for file "
-#define	SUCCESS_BASE_STRING	"\tsuccessfuly completed macro expansion for file "
-enum 
-{
-	SUCCESS = 1,
-	ERROR_SOURCE_FILE_MEMORY_ALLOCATION,
-	ERROR_SOURCE_FILE_ACCESS,
-	ERROR_DESTINATION_FILE_MEMORY_ALLOCATION,
-	ERROR_DESTINATION_FILE_ACCESS,
-	ERROR_PROGRAM_MEMORY_ALLOCATION,
-	ERROR_WORD_FOUND_PRE_MACR_KEYWORD,
-	ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD,
-	ERROR_MACRO_NAME_EMPTY,
-	ERROR_MACRO_NAME_RESERVED_WORD,
-	ERROR_WORD_FOUND_AFTER_MACR_KEYWORD,
-	ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD,
-	ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX,
-	ERROR_MACRO_NAME_NOT_UNIQUE,
-	ERROR_EXCEEDED_MACRO_ARRAY_LIMIT,
-	STATE_COMMAND,
-	STATE_MACRO_EXPANDED,
-	STATE_COLLECT_MACRO_CONTENT,
-	MACRO_LINE_COLLECTED,
-	MACRO_EXPANDED,
-	MAX_LINE_DIGITS_IN_OUTPUT_FILE = 10,
-	MAX_FILENAME_LENGTH = 32,
-	MAX_MACRO_NAME_LENGTH = 32,
-	MAX_MACRO_LINES = 50,
-	MAX_CHARS_IN_LINE = 81,
-	MACRO_ARRAY_INIT_SIZE = 10,
-	MACRO_ARRAY_SIZE_MULTIPLIER_LIMIT = 10
-};
-
-typedef struct User_Output {
-	int message_type;
-	int line;
-	char message[MAX_CHARS_IN_LINE];
-} User_Output;
+#include "error_handling.h"
 
 typedef struct Macro {
 	char name[MAX_MACRO_NAME_LENGTH];
 	char content[MAX_MACRO_LINES * MAX_CHARS_IN_LINE];
 } Macro;
-
-/* handle_errors_macro_expansion: prints the relevant macro expansion message
- * types of messages/error handling:
- * SUCCESS
- * ERROR_SOURCE_FILE_MEMORY_ALLOCATION
- * ERROR_DESTINATION_FILE_MEMORY_ALLOCATION
- * ERROR_SOURCE_FILE_ACCESS
- * ERROR_DESTINATION_FILE_ACCESS */
-void handle_errors_macro_expansion(User_Output *out);
 
 /* handle_filename_extension: adds the extension for the file name if needed
  * returns pointer to the file name with the extension added to it */
@@ -87,9 +37,6 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
  * returns 0 when the line was printed, or a macro was expanded (non of the previous cases occurred) */
 int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index);
 int expand_macros_handle_collect_macro_content_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index);
-
-/* log_error: logs the relevant messages to print out to the user */
-void log_error(User_Output *out, char *file_name, char *line, int error_type, int line_number);
 
 /* verify_till_macr_word: reads line and returns a pointer to the first occurrence of "macr " or "macr\t" in line if exists 
  * returns NULL and raises an error of type ERROR_WORD_FOUND_PRE_MACRO_KEYWORD into out in case there a words prior to "macr " or "macr\t"

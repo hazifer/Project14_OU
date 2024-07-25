@@ -1,3 +1,5 @@
+#include <string.h>
+
 /* itoa_base10: converts an input integer to string and sets it into n_str */
 void itoa_base10(int n, char *n_str);
 
