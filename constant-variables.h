@@ -1,7 +1,6 @@
-
 #define ERROR_BASE_STRING 	"\terror in macro expansion for file "
 #define	SUCCESS_BASE_STRING	"\tsuccessfuly completed macro expansion for file "
-
+#define BASE_IC_ADDRESS		100
 enum {
 	SUCCESS = 1,
 	ERROR_SOURCE_FILE_MEMORY_ALLOCATION,

@@ -1,4 +1,4 @@
-#include "string_utility.h"
+#include "string-utility.h"
 
 void itoa_base10(int n, char *n_str)
 {

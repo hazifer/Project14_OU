@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <ctype.h>
-#include "error_handling.h"
+#include "error-handling.h"
 
 typedef struct Macro {
 	char name[MAX_MACRO_NAME_LENGTH];

@@ -1,4 +1,4 @@
-#include "error_handling.h"
+#include "error-handling.h"
 
 void log_error(User_Output *out, char *file_name, char *line, int error_type, int line_number)
 {

@@ -59,9 +59,9 @@ bi
 bi
 bi9
 bi15
-bi16 1
+bi16
 bi14
-bi13 1
+bi13
 bi12
 bi11
 label3: bi10
@@ -75,3 +75,5 @@ bi3
 bi2
 bi1
 bi0
+
+xd: .data

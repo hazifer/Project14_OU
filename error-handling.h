@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "string_utility.h"
-#include "constant_variables.h"
+#include "string-utility.h"
+#include "constant-variables.h"
 
 typedef struct User_Output {
 	int message_type;
