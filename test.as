@@ -59,9 +59,9 @@ bi
 bi
 bi9
 bi15
-bi16
+bi16 1
 bi14
-bi13
+bi13 1
 bi12
 bi11
 label3: bi10

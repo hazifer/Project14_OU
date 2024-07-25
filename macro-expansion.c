@@ -149,9 +149,9 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 				break;
 			}
 			temp_macro_array = increment_macro_array_index(macro_array, ++next_macro_index, out);
-			if (!temp_macro_array && out->message_type == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT)
+			if (!temp_macro_array && out->message_type == ERROR_PROGRAM_MEMORY_ALLOCATION && out->message_type == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT)
 			{
-				log_error(out, sfname, line, ERROR_EXCEEDED_MACRO_ARRAY_LIMIT, line_number);
+				log_error(out, sfname, line, out->message_type, line_number);
 				break;
 			}
 			macro_array = temp_macro_array ? temp_macro_array : macro_array;
@@ -187,6 +187,7 @@ int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, F
 		return ERROR_WORD_FOUND_PRE_MACR_KEYWORD;
 	if (li == NULL)
 	{
+		/* search for macro words? */
 		/* check for already declared macro names against a single word in line, or output line */
 		li = skip_blanks(line);
 		read_word(li, word);
@@ -357,8 +358,11 @@ Macro * allocate_macro_array_memory(Macro *macro_array, User_Output *out)
 		temp_macro_array = (struct Macro *)realloc(macro_array, alloc_size * sizeof(struct Macro)); /* realloc of macro_array */
 	else
 		temp_macro_array = (struct Macro *)malloc(alloc_size * sizeof(struct Macro)); /* malloc incase it wasn't allocated yet */
-	if (!temp_macro_array) 
+	if (!temp_macro_array)
+	{
+		out->message_type = ERROR_PROGRAM_MEMORY_ALLOCATION;	
 		return NULL; /* couldn't allocate enough memory for reallocation/allocation */
+	}
 	/* allocation of memory for each struct */
 	return temp_macro_array;
 }
