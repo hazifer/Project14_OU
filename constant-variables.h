@@ -3,6 +3,10 @@
 
 #define ERROR_BASE_STRING 	"\terror in macro expansion for file "
 #define	SUCCESS_BASE_STRING	"\tsuccessfuly completed macro expansion for file "
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5716cca316ef92423e1bf64d84f51e3b3b4735a8
 enum {
 	SUCCESS = 1,
 	ERROR_SOURCE_FILE_MEMORY_ALLOCATION,
