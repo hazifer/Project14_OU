@@ -1,3 +1,6 @@
+#ifndef MACROEXPANSION_H
+#define MACROEXPANSION_H
+
 #include <stdlib.h>
 #include <ctype.h>
 #include "error-handling.h"
@@ -73,3 +76,5 @@ void expand_macro(FILE *fpout, Macro *macro_array, int macro_index);
 
 /* is_newline_needed: computes and returns a boolean, according to state_value - true (1) or false (0) */
 char is_newline_needed(int state_value);
+
+#endif /* MACROEXPANSION_H */

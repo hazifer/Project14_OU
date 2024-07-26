@@ -1,3 +1,6 @@
+#ifndef CONSTANTVARIABLES_H
+#define CONSTANTVARIABLES_H
+
 #define ERROR_BASE_STRING 	"\terror in macro expansion for file "
 #define	SUCCESS_BASE_STRING	"\tsuccessfuly completed macro expansion for file "
 #define BASE_IC_ADDRESS		100
@@ -31,3 +34,5 @@ enum {
 	MACRO_ARRAY_INIT_SIZE = 10,
 	MACRO_ARRAY_SIZE_MULTIPLIER_LIMIT = 10
 };
+
+#endif /* CONSTANTVARIABLES_H */

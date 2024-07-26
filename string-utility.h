@@ -1,3 +1,6 @@
+#ifndef STRINGUTILITY_H
+#define STRINGUTILITY_H
+
 #include <string.h>
 
 /* itoa_base10: converts an input integer to string and sets it into n_str */
@@ -19,3 +22,5 @@ void add_tabs_after_newline(char *content);
 
 /* count_newlines: counts and returns the number of '\n' characters in a given string */
 int count_newlines(char *content);
+
+#endif /* STRINGUTILITY_H */

@@ -1,3 +1,6 @@
+#ifndef ERRORHANDLING_H
+#define ERRORHANDLING_H
+
 #include <stdio.h>
 #include "string-utility.h"
 #include "constant-variables.h"
@@ -20,3 +23,4 @@ void handle_errors_macro_expansion(User_Output *out);
 /* log_error: logs the relevant messages to print out to the user */
 void log_error(User_Output *out, char *file_name, char *line, int error_type, int line_number);
 
+#endif /* ERRORHANDLING_H */

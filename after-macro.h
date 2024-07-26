@@ -1,3 +1,6 @@
+#ifndef AFTERMACRO_H
+#define AFTERMACRO_H
+
 #include <stdlib.h>
 #include <ctype.h>
 #include "error-handling.h"
@@ -13,3 +16,5 @@ typedef struct Label {
 int save_label(char *line, Label *label_array, int line_number, int ic, User_Output *out);
 
 int get_command_op_code_decimal(char *line, int line_number, int ic, User_Output *out);
+
+#endif /* AFTERMACRO_H */

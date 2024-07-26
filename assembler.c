@@ -1,4 +1,6 @@
 #include "macro-expansion.h"
+#include "after-macro.h"
+#include "error-handling.h"
 
 int main(int argc, char *argv[])
 {
