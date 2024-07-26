@@ -76,4 +76,6 @@ bi2
 bi1
 bi0
 
+what:isthis
+xd2
 xd: .data

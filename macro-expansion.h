@@ -15,10 +15,11 @@ typedef struct Macro {
 char * handle_filename_extension(char *sfname, char *dfname, User_Output *out);
 
 /* expand_macros: expands the source file's macros into a similarly named file with an extension ".am"
+ * saves the .am file created into dfname_holder for the callee's use
  * returns 0 on success
  * returns 1 on failure
  * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields */
-int expand_macros(char *sfname, User_Output *out);
+int expand_macros(char *sfname, char *dfname_holder, User_Output *out);
 int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out, Macro *macro_array);
 
 /* expand_macros_print_label: writes a label from a given line into the output file

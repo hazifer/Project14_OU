@@ -1,3 +1,5 @@
-in lines with macroname for expansion, check before the line: (expand_macros_handle_command_state)
-	strstr lookup of each declared macroname against words in line
-	if exists, assuming lines started with non blank, check for a blank before that index - if exists, return an error
+-	in lines with macroname for expansion, check before the line: (expand_macros_handle_command_state)
+		strstr lookup of each declared macroname against words in line
+		if exists, assuming lines started with non blank, check for a blank before that index - if exists, return an error
+-	check file name size in main
+-	fix double \n on when label+regular command are in line

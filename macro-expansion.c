@@ -28,10 +28,7 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 	/* testing for read access of the input file */
 	fp = fopen(extended_filename, "r");
 	if (!fp)
-	{
-
 		return NULL;
-	}
 	fclose(fp);
 	out->message_type = SUCCESS;
 	strcpy(out->message, SUCCESS_BASE_STRING);
@@ -40,7 +37,7 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 	return extended_filename;
 }
 
-int expand_macros(char *sfname, User_Output *out)
+int expand_macros(char *sfname, char *dfname_holder, User_Output *out)
 {
 	FILE *fpin, *fpout;
 	char *dfname, *line, *tmp;
@@ -57,6 +54,7 @@ int expand_macros(char *sfname, User_Output *out)
 	tmp = strstr(dfname, ".as");
 	tmp[2] = 'm';
 	fpin = fopen(sfname, "r");
+	strcpy(dfname_holder, dfname);
 	if (!fpin)
 	{
 		log_error(out, sfname, NULL, ERROR_SOURCE_FILE_ACCESS, 0); /* line_number = 0 to ignore line in log_error */
