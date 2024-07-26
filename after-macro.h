@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include "error-handling.h"
+#include "string-utility.h"
 
 typedef struct Label {
 	char name[MAX_MACRO_NAME_LENGTH];
