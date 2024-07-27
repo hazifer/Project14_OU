@@ -77,7 +77,7 @@ void print_errors(User_Output *out)
 {
 	int error_index = 0;
 	/* should be done in a while for multiple errors */
-	while (out[error_index++].message_type)
-		printf("%s", out[error_index].message);
+	while (out[error_index].message[0])
+		printf("%s", out[error_index++].message);
 }
 

@@ -28,7 +28,10 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 	/* testing for read access of the input file */
 	fp = fopen(extended_filename, "r");
 	if (!fp)
+	{
+		log_error(out, extended_filename, NULL, ERROR_SOURCE_FILE_ACCESS, 0);
 		return NULL;
+	}
 	fclose(fp);
 	out->message_type = SUCCESS;
 	strcpy(out->message, SUCCESS_BASE_STRING);
@@ -147,7 +150,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 				break;
 			}
 			temp_macro_array = increment_macro_array_index(macro_array, ++next_macro_index, out);
-			if (!temp_macro_array && out->message_type == ERROR_PROGRAM_MEMORY_ALLOCATION && out->message_type == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT)
+			if (!temp_macro_array && (out->message_type == ERROR_PROGRAM_MEMORY_ALLOCATION || out->message_type == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT))
 			{
 				log_error(out, sfname, line, out->message_type, line_number);
 				break;

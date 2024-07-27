@@ -8,7 +8,7 @@
 typedef struct User_Output {
 	int message_type;
 	int line;
-	char message[MAX_CHARS_IN_LINE];
+	char message[MAX_CHARS_IN_LINE * ERROR_MESSAGE_LINE_LENGTH_MULTIPLIER];
 } User_Output;
 
 /* handle_errors_macro_expansion: prints the relevant macro expansion message

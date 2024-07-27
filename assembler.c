@@ -32,9 +32,10 @@ int main(int argc, char *argv[])
 			print_errors(out);
 			continue;
 		}
+		/*
 		labels = allocate_label_array_memory(labels, out);
 		return_value = begin_assembler(fname, after_macro_fname, labels, out);
-		print_errors(out);
+		print_errors(out);*/
 	}
 	free(out);
 	return 0;
