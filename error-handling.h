@@ -2,6 +2,7 @@
 #define ERRORHANDLING_H
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "string-utility.h"
 #include "constant-variables.h"
 
@@ -21,6 +22,10 @@ typedef struct User_Output {
 void print_errors(User_Output *out);
 
 /* log_error: logs the relevant messages to print out to the user */
-void log_error(User_Output *out, char *file_name, char *line, int error_type, int line_number);
+void log_error(User_Output **out, char *file_name, char *line, int error_type, int line_number, int *error_return);
+
+User_Output * increment_output_array_index(User_Output *out, int next_output_index, int *error_return);
+
+User_Output * allocate_output_array_memory(User_Output *out, int *error_return);
 
 #endif /* ERRORHANDLING_H */

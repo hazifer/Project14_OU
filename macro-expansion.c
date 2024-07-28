@@ -1,6 +1,6 @@
 #include "macro-expansion.h"
 
-char * handle_filename_extension(char *filename, char extension[], User_Output *out)
+char * handle_filename_extension(char *filename, char extension[], User_Output **out, int *error_return)
 {
 	/* only handle cases of no .** extension, and an entirely existing .** extension */
 	char *extended_filename;
@@ -14,11 +14,11 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 		/* error handling */
 		if(!extended_filename)
 		{
-			out->message_type = ERROR_SOURCE_FILE_MEMORY_ALLOCATION;
-			strcpy(out->message, ERROR_BASE_STRING);
-			strcat(out->message, filename);
-			strcat(out->message, extension);
-			strcat(out->message, ": couldn't allocate enough memory for the program.\n");
+			(*out)->message_type = *error_return = ERROR_SOURCE_FILE_MEMORY_ALLOCATION;
+			strcpy((*out)->message, ERROR_BASE_STRING);
+			strcat((*out)->message, filename);
+			strcat((*out)->message, extension);
+			strcat((*out)->message, ": couldn't allocate enough memory for the program.\n");
 			return NULL;
 		}
 		extended_filename[0] = '\0';
@@ -29,27 +29,31 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 	fp = fopen(extended_filename, "r");
 	if (!fp)
 	{
-		log_error(out, extended_filename, NULL, ERROR_SOURCE_FILE_ACCESS, 0);
+		log_error(out, extended_filename, NULL, ERROR_SOURCE_FILE_ACCESS, 0, error_return);
+		*error_return = ERROR_SOURCE_FILE_ACCESS;
 		return NULL;
 	}
 	fclose(fp);
-	out->message_type = SUCCESS;
-	strcpy(out->message, SUCCESS_BASE_STRING);
-	strcat(out->message, extended_filename);
-	strcat(out->message, "\n");
+	*error_return = 0;
+	(*out)->message_type = SUCCESS;
+	strcpy((*out)->message, SUCCESS_BASE_STRING);
+	strcat((*out)->message, extended_filename);
+	strcat((*out)->message, "\n");
 	return extended_filename;
 }
 
-int expand_macros(char *sfname, char *dfname_holder, User_Output *out)
+int expand_macros(char *sfname, char *dfname_holder, User_Output **out, int *error_return)
 {
 	FILE *fpin, *fpout;
 	char *dfname, *line, *tmp;
 	Macro *macro_array = NULL;
+	*error_return = 0;
 	/* memory allocation, file access, and error handling */
 	dfname = (char *)malloc(strlen(sfname) * sizeof(char));
 	if (!dfname)
 	{
-		log_error(out, sfname, NULL, ERROR_DESTINATION_FILE_MEMORY_ALLOCATION, 0); /* line_number = 0 to ignore line in log_error */
+		log_error(out, sfname, NULL, ERROR_DESTINATION_FILE_MEMORY_ALLOCATION, 0, error_return);
+	/* free command to be used where we need */
 		return 1;
 	}
 	strcpy(dfname, sfname);
@@ -60,51 +64,59 @@ int expand_macros(char *sfname, char *dfname_holder, User_Output *out)
 	strcpy(dfname_holder, dfname);
 	if (!fpin)
 	{
-		log_error(out, sfname, NULL, ERROR_SOURCE_FILE_ACCESS, 0); /* line_number = 0 to ignore line in log_error */
+		log_error(out, sfname, NULL, ERROR_SOURCE_FILE_ACCESS, 0, error_return);
+	/* free command to be used where we need */
 		return 1;
 	}
 	fpout = fopen(dfname, "w");
 	if (!fpout)
 	{
-		log_error(out, dfname, NULL, ERROR_DESTINATION_FILE_ACCESS, 0); /* line_number = 0 to ignore line in log_error */
+		log_error(out, dfname, NULL, ERROR_DESTINATION_FILE_ACCESS, 0, error_return);
+	/* free command to be used where we need */
 		return 1;
 	}
 	line = (char *)malloc(MAX_CHARS_IN_LINE * sizeof(char));
 	if (!line)
 	{
-		log_error(out, sfname, line, ERROR_PROGRAM_MEMORY_ALLOCATION, 0); /* line_number = 0 to ignore line in log_error */
+		log_error(out, sfname, line, ERROR_PROGRAM_MEMORY_ALLOCATION, 0, error_return);
+	/* free command to be used where we need */
 		return 1;
 	}
-	macro_array = allocate_macro_array_memory(macro_array, out);
-	if (!macro_array)
+	macro_array = allocate_macro_array_memory(macro_array, error_return);
+	if (*error_return)
 	{
-		if (out->message_type == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT)
+		if (*error_return == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT)
 		{
-			log_error(out, sfname, line, ERROR_EXCEEDED_MACRO_ARRAY_LIMIT, 0);
+			log_error(out, sfname, line, ERROR_EXCEEDED_MACRO_ARRAY_LIMIT, 0, error_return);
+	/* free command to be used where we need */
 			return 1;
 		}
-		log_error(out, sfname, line, ERROR_PROGRAM_MEMORY_ALLOCATION, 0);
+		log_error(out, sfname, line, ERROR_PROGRAM_MEMORY_ALLOCATION, 0, error_return);
+	/* free command to be used where we need */
 		return 1;
 	}
-	expand_macros_memory_allocated(sfname, dfname, fpin, fpout, line, out, macro_array);
+	expand_macros_memory_allocated(sfname, dfname, fpin, fpout, line, out, macro_array, error_return);
 	/* sfname is freed in main */
-	if (out->message_type != SUCCESS)
+	if (*error_return)
 		remove(dfname);
+	/* free command to be used where we need */
 	free(dfname);
 	fclose(fpin);
 	fclose(fpout);
 	free(line);
+	free(macro_array);
 	return 0;
 }
 
-int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output *out, Macro *macro_array)
+int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output **out, Macro *macro_array, int *error_return)
 {
 	char *li; /* line indexe */
 	Macro *temp_macro_array; /* for future macro_array memory reallocations */
 	int  state = STATE_COMMAND, return_value, label_flag, line_number, next_macro_index;
 	line_number = next_macro_index = 0;
-	while (fgets(line, MAX_CHARS_IN_LINE, fpin) && (li = expand_macros_handle_label(sfname, dfname, fpin, fpout, line, ++line_number, out)))
+	while (fgets(line, MAX_CHARS_IN_LINE, fpin) && (li = expand_macros_handle_label(line, fpout)))
 	{
+		++line_number;
 		/* line was read, and li is not NULL */
 		label_flag = 0;
 		if (*li == ';' || *li == '\n')
@@ -122,7 +134,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		li = skip_blanks(li);
 		if (state == STATE_COMMAND)
 		{
-			return_value = expand_macros_handle_command_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array, next_macro_index);
+			return_value = expand_macros_handle_command_state(li, fpout, macro_array, next_macro_index);
 			if (label_flag && is_newline_needed(return_value))
 				fputc('\n', fpout);
 			if (!return_value || return_value == MACRO_EXPANDED)
@@ -132,39 +144,39 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 			}
 			if (return_value != STATE_COLLECT_MACRO_CONTENT)
 			{
-				log_error(out, sfname, line, return_value, line_number);
+				log_error(out, sfname, line, return_value, line_number, error_return);
 				break;
 			}
 			state = STATE_COLLECT_MACRO_CONTENT;
 		}
 		else if (state == STATE_COLLECT_MACRO_CONTENT)
 		{
-			return_value = expand_macros_handle_collect_macro_content_state(sfname, dfname, fpin, fpout, li, line_number, out, macro_array, next_macro_index);
+			return_value = expand_macros_handle_collect_macro_content_state(li, out, macro_array, next_macro_index);
 			if (return_value == MACRO_LINE_COLLECTED)
 			{
 				continue;
 			}
 			if (return_value == ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD || return_value == ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD)
 			{
-				log_error(out, sfname, line, return_value, line_number);
+				log_error(out, sfname, line, return_value, line_number, error_return);
 				break;
 			}
-			temp_macro_array = increment_macro_array_index(macro_array, ++next_macro_index, out);
-			if (!temp_macro_array && (out->message_type == ERROR_PROGRAM_MEMORY_ALLOCATION || out->message_type == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT))
+			temp_macro_array = increment_macro_array_index(macro_array, ++next_macro_index, error_return);
+			if (!temp_macro_array && (*error_return == ERROR_PROGRAM_MEMORY_ALLOCATION || *error_return == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT))
 			{
-				log_error(out, sfname, line, out->message_type, line_number);
+				log_error(out, sfname, line, *error_return, line_number, error_return);
 				break;
 			}
 			macro_array = temp_macro_array ? temp_macro_array : macro_array;
 			state = STATE_COMMAND;
 		}
 	}
-	if (out->message_type != SUCCESS)
+	if (*error_return)
 		return 1;
 	return 0;
 }
 
-char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out)
+char * expand_macros_handle_label(char *line, FILE *fpout)
 {
 	char *end = strchr(line, ':'), tmp;
 	line = skip_blanks(line);
@@ -177,14 +189,14 @@ char * expand_macros_handle_label(char *sfname, char *dfname, FILE *fpin, FILE *
 	return end;
 }
 
-int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index)
+int expand_macros_handle_command_state(char *line, FILE *fpout, Macro *macro_array, int next_macro_index)
 {
 	char *li;
-	char word[MAX_MACRO_NAME_LENGTH];
-	int macro_index;
+	char word[MAX_WORD_LENGTH];
+	int macro_index, error_return = 0;
 	/* look for "macr" statements FIRST in line (li is currently pointing to a non blank, and not ':') */
-	li = read_till_macr_keyword(line, out);
-	if (li == NULL && out->message_type == ERROR_WORD_FOUND_PRE_MACR_KEYWORD)
+	li = read_till_macr_keyword(line, &error_return);
+	if (li == NULL && error_return == ERROR_WORD_FOUND_PRE_MACR_KEYWORD)
 		return ERROR_WORD_FOUND_PRE_MACR_KEYWORD;
 	if (li == NULL)
 	{
@@ -221,11 +233,12 @@ int expand_macros_handle_command_state(char *sfname, char *dfname, FILE *fpin, F
 	return STATE_COLLECT_MACRO_CONTENT;
 }
 
-int expand_macros_handle_collect_macro_content_state(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, int line_number, User_Output *out, Macro *macro_array, int next_macro_index)
+int expand_macros_handle_collect_macro_content_state(char *line, User_Output **out, Macro *macro_array, int next_macro_index)
 {
 	char *li;
-       	li = read_till_endmacr_keyword(line, out);
-	if (li == NULL && out->message_type == ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD)
+	int error_return = 0;
+       	li = read_till_endmacr_keyword(line, &error_return);
+	if (li == NULL && error_return == ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD)
 		return ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD;
 	if (li == NULL)
 	{
@@ -239,12 +252,13 @@ int expand_macros_handle_collect_macro_content_state(char *sfname, char *dfname,
 	return STATE_COMMAND;
 }
 
-char * read_till_macr_keyword(char *line, User_Output *out)
+char * read_till_macr_keyword(char *line, int *error_return)
 {
 	/* assumes line is pointing to a non blank, past the label of the line */
-	char word[MAX_MACRO_NAME_LENGTH];
+	char word[MAX_WORD_LENGTH];
 	char *macr_index;
 	int word_length;
+	*error_return = 0;
 	/* check if macro macr statement begins the line */
 	macr_index = strstr(line, "macr ");
 	if (!macr_index)
@@ -271,14 +285,14 @@ char * read_till_macr_keyword(char *line, User_Output *out)
 	if (!macr_index)
 		return NULL;
 	/* macr_index is not NULL, since line was initially pointing to a non blank, there must be a word prior to the macr statement */
-	out->message_type = ERROR_WORD_FOUND_PRE_MACR_KEYWORD;
+	*error_return = ERROR_WORD_FOUND_PRE_MACR_KEYWORD;
 	return NULL;
 }
 
-char * read_till_endmacr_keyword(char *line, User_Output *out)
+char * read_till_endmacr_keyword(char *line, int *error_return)
 {
 	/* assumes line is pointing to a non blank, past the label of the line */
-	char word[MAX_MACRO_NAME_LENGTH];
+	char word[MAX_WORD_LENGTH];
 	char *endmacr_index;
 	int word_length;
 	/* check if macro macr statement begins the line */
@@ -307,7 +321,7 @@ char * read_till_endmacr_keyword(char *line, User_Output *out)
 	if (!endmacr_index)
 		return NULL;
 	/* macr_index is not NULL, since line was initially pointing to a non blank, there must be a word prior to the macr statement */
-	out->message_type = ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD;
+	*error_return = ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD;
 	return NULL;
 }
 
@@ -345,34 +359,34 @@ char get_macro_name_index(char *word, Macro *macro_array)
 	return -1;
 }
 
-Macro * allocate_macro_array_memory(Macro *macro_array, User_Output *out)
+Macro * allocate_macro_array_memory(Macro *macro_array, int *error_return)
 {
 	static char macro_multiplier_factor; /* acts as a multiplier to increase macro_array size with jumps of MACROINIT */
 	Macro *temp_macro_array; 
 	size_t alloc_size = ++macro_multiplier_factor * MACRO_ARRAY_INIT_SIZE; /* number of Macro structs to allocate memory for */
 	if (macro_multiplier_factor > MACRO_ARRAY_SIZE_MULTIPLIER_LIMIT) /* exceeded unique macro limit for the program (MACROINIT * MACROLIMITFACTOR) */
 	{
-		out->message_type = ERROR_EXCEEDED_MACRO_ARRAY_LIMIT;
+		*error_return = ERROR_EXCEEDED_MACRO_ARRAY_LIMIT;
 		return NULL; 
 	}
 	if (macro_array) 
-		temp_macro_array = (struct Macro *)realloc(macro_array, alloc_size * sizeof(struct Macro)); /* realloc of macro_array */
+		temp_macro_array = (Macro *)realloc(macro_array, alloc_size * sizeof(Macro)); /* realloc of macro_array */
 	else
-		temp_macro_array = (struct Macro *)malloc(alloc_size * sizeof(struct Macro)); /* malloc incase it wasn't allocated yet */
+		temp_macro_array = (Macro *)malloc(alloc_size * sizeof(Macro)); /* malloc incase it wasn't allocated yet */
 	if (!temp_macro_array)
 	{
-		out->message_type = ERROR_PROGRAM_MEMORY_ALLOCATION;	
+		*error_return = ERROR_PROGRAM_MEMORY_ALLOCATION;
 		return NULL; /* couldn't allocate enough memory for reallocation/allocation */
 	}
 	/* allocation of memory for each struct */
 	return temp_macro_array;
 }
 
-Macro * increment_macro_array_index(Macro *macro_array, int next_macro_index, User_Output *out)
+Macro * increment_macro_array_index(Macro *macro_array, int next_macro_index, int *error_return)
 {
 	Macro *temp_macro_array = NULL;
 	if (next_macro_index && next_macro_index % MACRO_ARRAY_INIT_SIZE == 0)
-		temp_macro_array = allocate_macro_array_memory(macro_array, out);
+		temp_macro_array = allocate_macro_array_memory(macro_array, error_return);
 	return temp_macro_array;
 }
 void expand_macro(FILE *fpout, Macro *macro_array, int macro_index)
