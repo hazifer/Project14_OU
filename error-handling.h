@@ -28,4 +28,6 @@ User_Output * increment_output_array_index(User_Output *out, int next_output_ind
 
 User_Output * allocate_output_array_memory(User_Output *out, int *error_return);
 
+User_Output * init_output_array_memory();
+
 #endif /* ERRORHANDLING_H */

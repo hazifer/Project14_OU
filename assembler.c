@@ -10,6 +10,7 @@ int main(int argc, char *argv[])
 	User_Output *out = NULL;
 	while (argc-- > 1)
 	{
+		error_return = 0;
 		/* check file name size ?? */
 		if (strlen(argv[argc]) > MAX_FILENAME_LENGTH)
 		{
@@ -17,7 +18,7 @@ int main(int argc, char *argv[])
 			continue;
 		}
 		printf("beginning macro expansion for input \"%s\"\n", argv[argc]);
-		out = allocate_output_array_memory(out, &error_return);
+		out = init_output_array_memory();
 		if (error_return)
 		{
 			/* print depends on error_return? */
@@ -30,13 +31,7 @@ int main(int argc, char *argv[])
 			print_errors(out);
 			continue;
 		}
-		
-		log_error(&out, "test3", "test", ERROR_PROGRAM_MEMORY_ALLOCATION, 0, &error_return);
-		log_error(&out, "test2", "test233", ERROR_PROGRAM_MEMORY_ALLOCATION, 0, &error_return);
-		printf("WHAT IS THIS\n");
-		return_value = expand_macros(fname, after_macro_fname, &out, &error_return);
-		print_errors(out);
-		/*
+		/* ??? */
 		if (fname != argv[argc])
 			free(fname);
 		if (return_value) 
@@ -50,6 +45,7 @@ int main(int argc, char *argv[])
 			printf("error initializing memory for the program for input \"%s\"\n", argv[argc]);
 			continue;
 		}
+		/*
 		return_value = begin_assembler(fname, after_macro_fname, labels, &out);
 		if (return_value) 
 		{
