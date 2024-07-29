@@ -1,3 +1,3 @@
-macr xd w
+ZZmacr xd x
 gg
 endmacr

@@ -19,9 +19,8 @@ int main(int argc, char *argv[])
 		}
 		printf("beginning macro expansion for input \"%s\"\n", argv[argc]);
 		out = init_output_array_memory();
-		if (error_return)
+		if (!out)
 		{
-			/* print depends on error_return? */
 			printf("error initializing memory for the program for input \"%s\"\n", argv[argc]);
 			continue;
 		}
@@ -29,35 +28,36 @@ int main(int argc, char *argv[])
 		if (error_return)
 		{
 			print_errors(out);
+			free(out);
 			continue;
-		}
-		/* ??? */
-		if (fname != argv[argc])
-			free(fname);
-		if (return_value) 
+		}	
+		expand_macros(fname, after_macro_fname, &out, &error_return);
+		free(fname);
+		if (error_return) 
 		{
 			print_errors(out);
+			free(out);
 			continue;
 		}
 		labels = allocate_label_array_memory(labels, out);
 		if (!labels)
 		{
 			printf("error initializing memory for the program for input \"%s\"\n", argv[argc]);
+			free(out);
 			continue;
 		}
-		/*
 		return_value = begin_assembler(fname, after_macro_fname, labels, &out);
 		if (return_value) 
 		{
 			print_errors(out);
+			free(out);
 			continue;
-		}*/
-		/* ?print_errors(out); */
-		/* clear out, labels = FREE? */
-		/* temp print labels
+		}
 		i = 0;
 		while (labels[i].decimal_instruction_address)
-			printf("label name: %s\n", labels[i++].name); */
+			printf("label name: %s\n", labels[i++].name);
+		print_errors(out);
+		free(out);
 	}
 	return 0;
 }

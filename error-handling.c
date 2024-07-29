@@ -97,20 +97,18 @@ User_Output * allocate_output_array_memory(User_Output *out, int *error_return)
 {
 	static char output_multiplier_factor; /* acts as a multiplier to increase macro_array size with jumps of MACROINIT */
 	User_Output *temp_output_array; 
-	size_t alloc_size;
-	int last_initialized;
-	last_initialized = ++output_multiplier_factor * OUTPUT_ARRAY_INIT_SIZE; 
-	alloc_size = last_initialized + OUTPUT_ARRAY_INIT_SIZE;
+	int last_initialized = ++output_multiplier_factor * OUTPUT_ARRAY_INIT_SIZE; 
+	size_t alloc_size = last_initialized + OUTPUT_ARRAY_INIT_SIZE;
 	if (output_multiplier_factor > OUTPUT_ARRAY_SIZE_MULTIPLIER_LIMIT) /* exceeded unique macro limit for the program (MACROINIT * MACROLIMITFACTOR) */
 	{
 		printf("what\n");
 		*error_return = ERROR_EXCEEDED_OUTPUT_ARRAY_LIMIT;
 		return NULL;
 	}
-	if (out) { printf("realloc\n"); 
-		temp_output_array = (User_Output *)realloc(out, alloc_size * sizeof(User_Output)); /* realloc of out */}
-	else {printf("calloc\n");
-		temp_output_array = (User_Output *)calloc(alloc_size, sizeof(User_Output)); /* malloc incase it wasn't allocated yet */}
+	if (out) 
+		temp_output_array = (User_Output *)realloc(out, alloc_size * sizeof(User_Output)); /* realloc of out */
+	/*else {printf("calloc\n");
+		temp_output_array = (User_Output *)calloc(alloc_size, sizeof(User_Output));} malloc incase it wasn't allocated yet */
 	if (!temp_output_array)
 	{
 		*error_return = ERROR_PROGRAM_MEMORY_ALLOCATION;	

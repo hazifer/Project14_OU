@@ -14,11 +14,8 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 		/* error handling */
 		if(!extended_filename)
 		{
-			(*out)->message_type = *error_return = ERROR_SOURCE_FILE_MEMORY_ALLOCATION;
-			strcpy((*out)->message, ERROR_BASE_STRING);
-			strcat((*out)->message, filename);
-			strcat((*out)->message, extension);
-			strcat((*out)->message, ": couldn't allocate enough memory for the program.\n");
+			log_error(out, filename, NULL, ERROR_SOURCE_FILE_MEMORY_ALLOCATION, 0, error_return);
+			*error_return = ERROR_SOURCE_FILE_MEMORY_ALLOCATION;
 			return NULL;
 		}
 		extended_filename[0] = '\0';
@@ -145,6 +142,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 			if (return_value != STATE_COLLECT_MACRO_CONTENT)
 			{
 				log_error(out, sfname, line, return_value, line_number, error_return);
+				*error_return = return_value;
 				break;
 			}
 			state = STATE_COLLECT_MACRO_CONTENT;
@@ -159,20 +157,21 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 			if (return_value == ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD || return_value == ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD)
 			{
 				log_error(out, sfname, line, return_value, line_number, error_return);
+				*error_return = return_value;
 				break;
 			}
-			temp_macro_array = increment_macro_array_index(macro_array, ++next_macro_index, error_return);
-			if (!temp_macro_array && (*error_return == ERROR_PROGRAM_MEMORY_ALLOCATION || *error_return == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT))
+			temp_macro_array = increment_macro_array_index(macro_array, ++next_macro_index, &return_value);
+			if (!temp_macro_array && (return_value == ERROR_PROGRAM_MEMORY_ALLOCATION || return_value == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT))
 			{
-				log_error(out, sfname, line, *error_return, line_number, error_return);
+				log_error(out, sfname, line, return_value, line_number, error_return);
+				*error_return = return_value;
 				break;
 			}
 			macro_array = temp_macro_array ? temp_macro_array : macro_array;
 			state = STATE_COMMAND;
 		}
 	}
-	if (*error_return)
-		return 1;
+	/* function ran successfully, error is saved into error_return */
 	return 0;
 }
 
@@ -285,7 +284,8 @@ char * read_till_macr_keyword(char *line, int *error_return)
 	if (!macr_index)
 		return NULL;
 	/* macr_index is not NULL, since line was initially pointing to a non blank, there must be a word prior to the macr statement */
-	*error_return = ERROR_WORD_FOUND_PRE_MACR_KEYWORD;
+	if (macr_index > line && (*(macr_index - 1) == ' ' || *(macr_index - 1) == '\t'))
+		*error_return = ERROR_WORD_FOUND_PRE_MACR_KEYWORD;
 	return NULL;
 }
 
