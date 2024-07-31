@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
 			free(out);
 			continue;
 		}	
+		printf("xd\n");
 		expand_macros(fname, after_macro_fname, &out, &error_return);
 		free(fname);
 		if (error_return) 
@@ -53,7 +54,7 @@ int main(int argc, char *argv[])
 			free(out);
 			free(labels);
 			continue;
-		}
+		} 
 		print_errors(out);
 		i = 0;
 		while (labels[i].decimal_instruction_address)

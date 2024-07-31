@@ -6,7 +6,7 @@ macr bi0
 0
 
 endmacr
-macr bi1 1
+macr bi1
 1
 endmacr
 label1:	macr bi2

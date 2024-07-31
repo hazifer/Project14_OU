@@ -110,7 +110,7 @@ User_Output * allocate_output_array_memory(User_Output *out, int *error_return)
 	User_Output *temp_output_array;
 	int last_initialized;
 	size_t alloc_size;
-	if (!out && !error_return)
+	if (!out)
 	{
 		output_multiplier_factor = 0;
 		return NULL;

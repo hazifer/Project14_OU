@@ -79,10 +79,11 @@ int save_label(char *line, char *end, Label **label_array, int line_number, int 
 {
 	static int next_label_array_index;
 	char word[MAX_WORD_LENGTH];
+	int error_return;
 	Label *tmp;
 	if (!label_array)
 	{
-		reset_label_array_indices();
+		next_label_array_index = 0;
 		return 0;
 	}
 	*end = '\0';
@@ -90,8 +91,10 @@ int save_label(char *line, char *end, Label **label_array, int line_number, int 
 	*end = ':';
 	strcpy((*label_array)[next_label_array_index].name, word);
 	(*label_array)[next_label_array_index].decimal_instruction_address = instruction_address + line_number;
-	tmp = increment_label_array_index(*label_array, ++next_label_array_index, NULL);
-	return 0;
+	tmp = increment_label_array_index(*label_array, ++next_label_array_index, &error_return);
+	if (tmp)
+		return 0;
+	return error_return;
 }
 
 int get_command_op_code_decimal(char *op)
@@ -147,7 +150,7 @@ Label * init_label_array_memory()
 	Label *temp_label_array; 
 	size_t alloc_size = LABEL_ARRAY_INIT_SIZE;
 	temp_label_array = (Label *)calloc(alloc_size, sizeof(Label));
-	reset_output_array_indices();
+	reset_label_array_indices();
 	return temp_label_array;
 }
 

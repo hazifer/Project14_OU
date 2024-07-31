@@ -363,7 +363,13 @@ Macro * allocate_macro_array_memory(Macro *macro_array, int *error_return)
 {
 	static char macro_multiplier_factor; /* acts as a multiplier to increase macro_array size with jumps of MACROINIT */
 	Macro *temp_macro_array; 
-	size_t alloc_size = ++macro_multiplier_factor * MACRO_ARRAY_INIT_SIZE; /* number of Macro structs to allocate memory for */
+	size_t alloc_size;
+	if (!macro_array)
+	{
+		macro_multiplier_factor = 0;
+		return NULL;
+	}
+	alloc_size = ++macro_multiplier_factor * MACRO_ARRAY_INIT_SIZE; /* number of Macro structs to allocate memory for */
 	if (macro_multiplier_factor > MACRO_ARRAY_SIZE_MULTIPLIER_LIMIT) /* exceeded unique macro limit for the program (MACROINIT * MACROLIMITFACTOR) */
 	{
 		*error_return = ERROR_EXCEEDED_MACRO_ARRAY_LIMIT;
@@ -389,6 +395,22 @@ Macro * increment_macro_array_index(Macro *macro_array, int next_macro_index, in
 		temp_macro_array = allocate_macro_array_memory(macro_array, error_return);
 	return temp_macro_array;
 }
+
+Macro * init_macro_array_memory(User_Output *old_output)
+{
+	Macro *temp_macro_array; 
+	size_t alloc_size = MACRO_ARRAY_INIT_SIZE;
+	temp_macro_array = (Macro *)calloc(alloc_size, sizeof(Macro));
+	reset_macro_array_indices();
+	return temp_macro_array;
+}
+
+void reset_output_array_indices()
+{
+	allocate_output_array_memory(NULL, NULL);
+	return;
+}
+
 void expand_macro(FILE *fpout, Macro *macro_array, int macro_index)
 {
 	/* add_tabs_after_newline(macro_array[macro_index].content); */

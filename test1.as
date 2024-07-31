@@ -49,7 +49,7 @@ macr bi14
 14
 endmacr
 macr bi15
-biglabel:	15
+biglabelw:	15
 endmacr
 test
 	one tab
