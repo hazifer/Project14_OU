@@ -39,25 +39,27 @@ int main(int argc, char *argv[])
 			free(out);
 			continue;
 		}
-		labels = allocate_label_array_memory(labels, out);
+		labels = init_label_array_memory();
 		if (!labels)
 		{
 			printf("error initializing memory for the program for input \"%s\"\n", argv[argc]);
 			free(out);
 			continue;
 		}
-		return_value = begin_assembler(fname, after_macro_fname, labels, &out);
+		return_value = begin_assembler(fname, after_macro_fname, &labels, &out);
 		if (return_value) 
 		{
 			print_errors(out);
 			free(out);
+			free(labels);
 			continue;
 		}
+		print_errors(out);
 		i = 0;
 		while (labels[i].decimal_instruction_address)
 			printf("label name: %s\n", labels[i++].name);
-		print_errors(out);
 		free(out);
+		free(labels);
 	}
 	return 0;
 }

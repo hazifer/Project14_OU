@@ -30,4 +30,6 @@ User_Output * allocate_output_array_memory(User_Output *out, int *error_return);
 
 User_Output * init_output_array_memory();
 
+void reset_output_array_indices();
+
 #endif /* ERRORHANDLING_H */

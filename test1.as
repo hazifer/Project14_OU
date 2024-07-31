@@ -9,7 +9,7 @@ endmacr
 macr bi1
 1
 endmacr
-la  bel1:	macr bi2
+label1:	macr bi2
 2
 endmacr
 macr bi3
@@ -49,7 +49,7 @@ macr bi14
 14
 endmacr
 macr bi15
-biglabel: :	15
+biglabel:	15
 endmacr
 test
 	one tab
@@ -62,8 +62,8 @@ bi15
 bi16
 bi14
 bi13
-11:dbi12
-31dsa:bi11
+xdd:dbi12
+dsa:bi11
 label3: bi10
 bi9
 bi8
@@ -77,5 +77,5 @@ bi1
 bi0
 
 what:isthis
-xd 22: xd
-xd 2: .data
+w22: xd
+xd2: .data

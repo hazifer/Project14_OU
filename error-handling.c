@@ -2,9 +2,14 @@
 
 void log_error(User_Output **out, char *file_name, char *line, int error_type, int line_number, int *error_return)
 {
-	static int error_index = 0;
+	static int error_index;
 	char ln_str[MAX_LINE_DIGITS_IN_OUTPUT_FILE];
 	User_Output *tmp;
+	if (!out && !error_return)
+	{
+		error_index = 0;
+		return;
+	}
 	(*out)[error_index].message_type = error_type;
 	strcpy((*out)[error_index].message, ERROR_BASE_STRING);
 	strcat((*out)[error_index].message, file_name);
@@ -12,6 +17,12 @@ void log_error(User_Output **out, char *file_name, char *line, int error_type, i
 	{
 		case ERROR_LABEL_NOT_BEGIN_WITH_ALPHA:
 			strcat((*out)[error_index].message, ": label begins with a non alphabetic character in line\n\t");
+			break;
+		case ERROR_LABEL_MULTIPLE_COLON:
+			strcat((*out)[error_index].message, ": multiple colons found (possibly multiple label declarations) in line\n\t");
+			break;
+		case ERROR_LABEL_EMPTY:
+			strcat((*out)[error_index].message, ": empty label in line\n\t");
 			break;
 		case ERROR_LABEL_MULTIPLE_WORDS_PRE_COLON:
 			strcat((*out)[error_index].message, ": incorrect label format, multiple words found pre colon in line\n\t");
@@ -96,12 +107,18 @@ User_Output * increment_output_array_index(User_Output *out, int next_output_ind
 User_Output * allocate_output_array_memory(User_Output *out, int *error_return)
 {
 	static char output_multiplier_factor; /* acts as a multiplier to increase macro_array size with jumps of MACROINIT */
-	User_Output *temp_output_array; 
-	int last_initialized = ++output_multiplier_factor * OUTPUT_ARRAY_INIT_SIZE; 
-	size_t alloc_size = last_initialized + OUTPUT_ARRAY_INIT_SIZE;
+	User_Output *temp_output_array;
+	int last_initialized;
+	size_t alloc_size;
+	if (!out && !error_return)
+	{
+		output_multiplier_factor = 0;
+		return NULL;
+	}
+	last_initialized = ++output_multiplier_factor * OUTPUT_ARRAY_INIT_SIZE; 
+	alloc_size = last_initialized + OUTPUT_ARRAY_INIT_SIZE;
 	if (output_multiplier_factor > OUTPUT_ARRAY_SIZE_MULTIPLIER_LIMIT) /* exceeded unique macro limit for the program (MACROINIT * MACROLIMITFACTOR) */
 	{
-		printf("what\n");
 		*error_return = ERROR_EXCEEDED_OUTPUT_ARRAY_LIMIT;
 		return NULL;
 	}
@@ -121,10 +138,18 @@ User_Output * allocate_output_array_memory(User_Output *out, int *error_return)
 	return temp_output_array;
 }
 
-User_Output * init_output_array_memory()
+User_Output * init_output_array_memory(User_Output *old_output)
 {
 	User_Output *temp_output_array; 
 	size_t alloc_size = OUTPUT_ARRAY_INIT_SIZE;
 	temp_output_array = (User_Output *)calloc(alloc_size, sizeof(User_Output));
+	reset_output_array_indices();
 	return temp_output_array;
+}
+
+void reset_output_array_indices()
+{
+	allocate_output_array_memory(NULL, NULL);
+	log_error(NULL, NULL, NULL, 0, 0, NULL);
+	return;
 }

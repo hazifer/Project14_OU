@@ -1,6 +1,6 @@
 
 
-la  bel1:
+label1:
 biglabel:test
 one tab
 spaces
@@ -8,13 +8,13 @@ bi
 
 bi
 9
-:	15
+15
 bi16
 14
 13
-11:dbi12
+xdd:dbi12
 
-31dsa:11
+dsa:11
 label3:10
 9
 8
@@ -32,7 +32,7 @@ test:7
 
 what:isthis
 
-xd 22:xd
+w22:xd
 
-xd 2:.data
+xd2:.data
 
