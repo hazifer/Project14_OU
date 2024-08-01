@@ -25,6 +25,17 @@ int save_label(char *line, char *end, Label **label_array, int line_number, int 
  * returns 0 when the syntax is okay */
 int verify_label_syntax(char *line, char *end);
 
+/* verify_label_unique: verifies if a label starting at line and ending at end (assumes end points to ':') is unique
+ * returns 0 if it is
+ * returns ERROR_LABEL_DUPLICATE if it isn't */
+int verify_label_unique(char *line, char *end, Label **label_array);
+
+/* verify_label_syntax: verifies if a line's syntax (after a label) is okay.
+ * returns 0 if it is
+ * returns the following error types depending on case if it isn't:
+ * */
+int verify_line_syntax(char *line);
+
 /* receives a possible op word, and returns it's decimal value opcode if it's an assembly word or -1 if it isn't */
 int get_command_op_code_decimal(char *op);
 

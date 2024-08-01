@@ -50,31 +50,14 @@ int read_word(char *line, char *word)
 	return len;
 }
 
-void add_tabs_after_newline(char *content)
+int read_word_delimited(char *line, char *word, char *delimiters)
 {
-	/* what if the last character is '\n'? */
-	/* is this even needed? maybe add tab to content expect in first line? */
-	char tmp;
-	char *new_end_index = content + strlen(content);
-	int tabs_to_add = count_newlines(content) - 1;
-	new_end_index += tabs_to_add;
-	*new_end_index = '\0';
-	while (tabs_to_add >= 0 && new_end_index > content)
-	{
-		if (*(new_end_index - tabs_to_add - 1) != '\n')
-			{
-				tmp = *new_end_index;
-				*new_end_index = *(new_end_index - tabs_to_add - 1);
-				*(new_end_index - tabs_to_add - 1) = tmp;
-			}
-		else
-		{
-			--tabs_to_add;
-			*(new_end_index - tabs_to_add - 1) = '\t';
-			--new_end_index;
-		}
-		--new_end_index;
-	}
+	int word_len, i;
+	char c;
+	word_len = i = 0;
+	while ((c = line[word_len]) && c != ' ' && strchr(delimiters, c))
+		++word_len;
+	return word_len;
 }
 
 int count_newlines(char *content)
@@ -84,4 +67,11 @@ int count_newlines(char *content)
 		if (*content == '\n')
 			++count;
 	return count;
+}
+
+int count_words_in_line(char *line, char *delimiters, const int max_word_length)
+{
+	int words = 0;
+
+	return words;
 }

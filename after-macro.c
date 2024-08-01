@@ -18,7 +18,7 @@ int begin_assembler(char *fname, char *after_label_fname, Label **label_array, U
 int first_after_macro_scan(FILE *fp, char *fname, Label **label_array, User_Output **out)
 {
 	char line[MAX_CHARS_IN_LINE], *p;
-	int line_number, instruction_address, return_value, i, error_return;
+	int line_number, instruction_address, return_value, error_return;
 	line_number = instruction_address = return_value = error_return = 0;
 	while (fgets(line, MAX_CHARS_IN_LINE, fp))
 	{
@@ -31,13 +31,25 @@ int first_after_macro_scan(FILE *fp, char *fname, Label **label_array, User_Outp
 				log_error(out, fname, line, return_value, line_number, &error_return);
 				continue;
 			}
-			printf("line = %s\n", line);
+			return_value = verify_label_unique(line, p, label_array);
+			if (return_value)
+			{
+				log_error(out, fname, line, return_value, line_number, &error_return);
+				continue;
+			}
 			return_value = save_label(line, p, label_array, line_number, instruction_address);
 			if (return_value)
 			{
 				log_error(out, fname, line, return_value, line_number, &error_return);
 				continue;
 			}
+			return_value = verify_line_syntax(p + 1);
+			if (return_value)
+			{
+				log_error(out, fname, line, return_value, line_number, &error_return);
+				continue;
+			}
+			instruction_address += count_words_in_line(p + 1, ",", MAX_WORD_LENGTH);
 		}
 	}
 	/* check if error and return accordingly */
@@ -76,6 +88,19 @@ int verify_label_syntax(char *line, char *end)
 	return 0;
 }
 
+int verify_label_unique(char *line, char *end, Label **label_array)
+{
+	char word[MAX_WORD_LENGTH];
+	int i = 0;
+	*end = '\0';
+	read_word(line, word);
+	*end = ':';
+	while ((*label_array)[i].decimal_instruction_address)
+		if (!strcmp((*label_array)[i++].name, word))
+				return ERROR_LABEL_DUPLICATE;
+	return 0;
+}
+
 int save_label(char *line, char *end, Label **label_array, int line_number, int instruction_address)
 {
 	static int next_label_array_index;
@@ -87,16 +112,23 @@ int save_label(char *line, char *end, Label **label_array, int line_number, int 
 		next_label_array_index = 0;
 		return 0;
 	}
-	*end = ' ';
+	*end = '\0';
 	read_word(line, word);
 	*end = ':';
 	strcpy((*label_array)[next_label_array_index].name, word);
 	(*label_array)[next_label_array_index].decimal_instruction_address = instruction_address + line_number;
-	printf("next_label_array_index %d & word = %s\n", (*label_array)[next_label_array_index], (*label_array)[next_label_array_index].name);
 	tmp = increment_label_array_index(*label_array, ++next_label_array_index, &error_return);
 	if (tmp)
+	{
+		*label_array = tmp;
 		return 0;
+	}
 	return error_return;
+}
+
+int verify_line_syntax(char *line)
+{
+	return 0;
 }
 
 int get_command_op_code_decimal(char *op)
@@ -115,12 +147,8 @@ int get_command_op_code_decimal(char *op)
 Label * increment_label_array_index(Label *label_array, int next_label_index, int *error_return)
 {
 	Label *temp_label_array = NULL;
-	int i = 0;
-	if (next_label_index % LABEL_ARRAY_INIT_SIZE == 0) { 
-/*		while (label_array[i].decimal_instruction_address)
-			printf("label name: %s\n", label_array[i++].name);*/
+	if (next_label_index % LABEL_ARRAY_INIT_SIZE == 0)
 		temp_label_array = allocate_label_array_memory(label_array, error_return); 
-	}
 	return temp_label_array;
 }
 

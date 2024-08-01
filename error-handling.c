@@ -15,6 +15,9 @@ void log_error(User_Output **out, char *file_name, char *line, int error_type, i
 	strcat((*out)[error_index].message, file_name);
 	switch(error_type)
 	{
+		case ERROR_LABEL_DUPLICATE:
+			strcat((*out)[error_index].message, ": an already defined label detected in line\n\t");
+			break;
 		case ERROR_LABEL_NOT_BEGIN_WITH_ALPHA:
 			strcat((*out)[error_index].message, ": label begins with a non alphabetic character in line\n\t");
 			break;

@@ -16,11 +16,15 @@ char * skip_blanks(char *line);
 /* read_word: reads a single word from line and saves it into word 
  * returns length of word read */
 int read_word(char *line, char *word);
+int read_word_delimited(char *line, char *word, char *delimiters);
 
 /* add_tabs_after_newline: adds a tab character '\t' after every '\n' in a given content */
 void add_tabs_after_newline(char *content);
 
 /* count_newlines: counts and returns the number of '\n' characters in a given string */
 int count_newlines(char *content);
+
+/* count_words_in_line: returns the number of words scanned delimited by the given delimiters */
+int count_words_in_line(char *line, char *delimiters, const int max_word_length);
 
 #endif /* STRINGUTILITY_H */
