@@ -131,7 +131,6 @@ User_Output * allocate_output_array_memory(User_Output *out, int *error_return)
 		*error_return = ERROR_PROGRAM_MEMORY_ALLOCATION;	
 		return NULL; /* couldn't allocate enough memory for reallocation/allocation */
 	}
-	printf("here\n");
 	/* 0 out of newly allocated memory for message_type field (type 0 means there is no content)  */
 	for (; last_initialized < alloc_size; ++last_initialized)
 		temp_output_array[last_initialized].message_type = 0;

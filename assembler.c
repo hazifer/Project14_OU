@@ -18,19 +18,20 @@ int main(int argc, char *argv[])
 			continue;
 		}
 		printf("beginning macro expansion for input \"%s\"\n", argv[argc]);
+		/*
 		out = init_output_array_memory();
 		if (!out)
 		{
 			printf("error initializing memory for the program for input \"%s\"\n", argv[argc]);
 			continue;
 		}
-		fname = handle_filename_extension(argv[argc], ".as", &out, &error_return); /* &out ?? */
-		if (error_return)
+		fname = handle_filename_extension(argv[argc], ".as", &out, &error_return); *//* &out ?? */
+		/*if (error_return)
 		{
 			print_errors(out);
 			free(out);
 			continue;
-		}	
+		}
 		expand_macros(fname, after_macro_fname, &out, &error_return);
 		free(fname);
 		if (error_return) 
@@ -38,7 +39,7 @@ int main(int argc, char *argv[])
 			print_errors(out);
 			free(out);
 			continue;
-		}
+		}*/
 		labels = init_label_array_memory();
 		if (!labels)
 		{
@@ -46,8 +47,9 @@ int main(int argc, char *argv[])
 			free(out);
 			continue;
 		}
-		printf("xd2\n");
-		return_value = begin_assembler(fname, after_macro_fname, &labels, &out);
+/*		return_value = begin_assembler(fname, after_macro_fname, &labels, &out);*/
+		return_value = begin_assembler(fname, "test1.am", &labels, &out);
+		/*
 		if (return_value) 
 		{
 			print_errors(out);
@@ -60,7 +62,7 @@ int main(int argc, char *argv[])
 		while (labels[i].decimal_instruction_address)
 			printf("label name: %s\n", labels[i++].name);
 		free(out);
-		free(labels);
+		free(labels);*/
 	}
 	return 0;
 }

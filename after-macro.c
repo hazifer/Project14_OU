@@ -31,6 +31,7 @@ int first_after_macro_scan(FILE *fp, char *fname, Label **label_array, User_Outp
 				log_error(out, fname, line, return_value, line_number, &error_return);
 				continue;
 			}
+			printf("line = %s\n", line);
 			return_value = save_label(line, p, label_array, line_number, instruction_address);
 			if (return_value)
 			{
@@ -86,11 +87,12 @@ int save_label(char *line, char *end, Label **label_array, int line_number, int 
 		next_label_array_index = 0;
 		return 0;
 	}
-	*end = '\0';
+	*end = ' ';
 	read_word(line, word);
 	*end = ':';
 	strcpy((*label_array)[next_label_array_index].name, word);
 	(*label_array)[next_label_array_index].decimal_instruction_address = instruction_address + line_number;
+	printf("next_label_array_index %d & word = %s\n", (*label_array)[next_label_array_index], (*label_array)[next_label_array_index].name);
 	tmp = increment_label_array_index(*label_array, ++next_label_array_index, &error_return);
 	if (tmp)
 		return 0;
@@ -113,8 +115,12 @@ int get_command_op_code_decimal(char *op)
 Label * increment_label_array_index(Label *label_array, int next_label_index, int *error_return)
 {
 	Label *temp_label_array = NULL;
-	if (next_label_index && next_label_index % LABEL_ARRAY_INIT_SIZE == 0)
-		temp_label_array = allocate_label_array_memory(label_array, error_return);
+	int i = 0;
+	if (next_label_index % LABEL_ARRAY_INIT_SIZE == 0) { 
+/*		while (label_array[i].decimal_instruction_address)
+			printf("label name: %s\n", label_array[i++].name);*/
+		temp_label_array = allocate_label_array_memory(label_array, error_return); 
+	}
 	return temp_label_array;
 }
 
@@ -122,17 +128,21 @@ Label * allocate_label_array_memory(Label *label_array, int *error_return)
 {
 	static char label_multiplier_factor; /* acts as a multiplier to increase label_array size with jumps of LABELINIT */
 	Label *temp_label_array; 
-	int last_initialized = ++label_multiplier_factor * LABEL_ARRAY_INIT_SIZE; 
-	size_t alloc_size = last_initialized + LABEL_ARRAY_INIT_SIZE;
+	int last_initialized;
+	size_t alloc_size;
+	if (!label_array)
+	{
+		label_multiplier_factor = 1;
+		return NULL;
+	}
+	last_initialized = label_multiplier_factor++ * LABEL_ARRAY_INIT_SIZE;
+	alloc_size = last_initialized + LABEL_ARRAY_INIT_SIZE;
 	if (label_multiplier_factor > LABEL_ARRAY_SIZE_MULTIPLIER_LIMIT)
 	{
 		*error_return = ERROR_EXCEEDED_LABEL_ARRAY_LIMIT;
 		return NULL; 
 	}
-	if (label_array) 
-		temp_label_array = (Label *)realloc(label_array, alloc_size * sizeof(Label)); /* realloc of macro_array */
-	/*else
-		temp_label_array = (Label *)malloc(alloc_size * sizeof(Label)); malloc incase it wasn't allocated yet */
+	temp_label_array = (Label *)realloc(label_array, alloc_size * sizeof(Label)); /* realloc of macro_array */
 	if (!temp_label_array)
 	{
 		*error_return = ERROR_PROGRAM_MEMORY_ALLOCATION;	
@@ -156,6 +166,7 @@ Label * init_label_array_memory()
 
 void reset_label_array_indices()
 {
+	allocate_label_array_memory(NULL, NULL);
 	save_label(NULL, NULL, NULL, 0, 0);
 	return;
 }

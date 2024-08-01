@@ -381,7 +381,7 @@ Macro * allocate_macro_array_memory(Macro *macro_array, int *error_return)
 		*error_return = ERROR_PROGRAM_MEMORY_ALLOCATION;
 		return NULL; /* couldn't allocate enough memory for reallocation/allocation */
 	}
-	/* allocation of memory for each struct */
+	*error_return = 0;
 	return temp_macro_array;
 }
 
