@@ -20,7 +20,7 @@ char * handle_filename_extension(char *sfname, char *dfname, User_Output **out, 
  * returns 1 on failure
  * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields */
 int expand_macros(char *sfname, char *dfname_holder, User_Output **out, int *error_return);
-int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output **out, Macro *macro_array, int *error_return);
+int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output **out, Macro **macro_array, int *error_return);
 
 /* expand_macros_print_label: writes a label from a given line into the output file
  * returns a pointer to the first ':' from a label in the given line
@@ -71,6 +71,8 @@ char get_macro_name_index(char *word, Macro *macro_array);
  * raises an error of type ERROR_EXCEEDED_MACRO_ARRAY_LIMIT if there was an attemt to allocate too many elements, limited by MACRO_ARRAY_INIT_SIZE * MACRO_ARRAY_SIZE_MULTIPLIER_LIMIT */
 Macro * allocate_macro_array_memory(Macro *macro_array, int *error_return);
 Macro * increment_macro_array_index(Macro *macro_array, int next_macro_array, int *error_return);
+Macro * init_macro_array_memory();
+void reset_macro_array_indices();
 
 /* expand_macro: expands a macro's contents into the output file */
 void expand_macro(FILE *fpout, Macro *macro_array, int macro_index);

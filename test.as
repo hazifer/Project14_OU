@@ -1,4 +1,4 @@
-macr xd
+;macr xd
 gg
 endmacr
 

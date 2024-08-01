@@ -72,6 +72,9 @@ void log_error(User_Output **out, char *file_name, char *line, int error_type, i
 		case ERROR_EXCEEDED_OUTPUT_ARRAY_LIMIT:
 			strcat((*out)[error_index].message, ": too many errors in code, code ignored after line\n\t");
 			break;
+		case ERROR_EXCEEDED_MACRO_ARRAY_LIMIT:
+			strcat((*out)[error_index].message, ": Exceeded memory allocation limit, too many macros defined\n");
+			break;
 		default:
 			strcat((*out)[error_index].message, ": unknown error in line\n\t");
 			break;
@@ -112,25 +115,23 @@ User_Output * allocate_output_array_memory(User_Output *out, int *error_return)
 	size_t alloc_size;
 	if (!out)
 	{
-		output_multiplier_factor = 0;
+		output_multiplier_factor = 1;
 		return NULL;
 	}
-	last_initialized = ++output_multiplier_factor * OUTPUT_ARRAY_INIT_SIZE; 
+	last_initialized = output_multiplier_factor++ * OUTPUT_ARRAY_INIT_SIZE; 
 	alloc_size = last_initialized + OUTPUT_ARRAY_INIT_SIZE;
 	if (output_multiplier_factor > OUTPUT_ARRAY_SIZE_MULTIPLIER_LIMIT) /* exceeded unique macro limit for the program (MACROINIT * MACROLIMITFACTOR) */
 	{
 		*error_return = ERROR_EXCEEDED_OUTPUT_ARRAY_LIMIT;
 		return NULL;
 	}
-	if (out) 
-		temp_output_array = (User_Output *)realloc(out, alloc_size * sizeof(User_Output)); /* realloc of out */
-	/*else {printf("calloc\n");
-		temp_output_array = (User_Output *)calloc(alloc_size, sizeof(User_Output));} malloc incase it wasn't allocated yet */
+	temp_output_array = (User_Output *)realloc(out, alloc_size * sizeof(User_Output)); /* realloc of out */
 	if (!temp_output_array)
 	{
 		*error_return = ERROR_PROGRAM_MEMORY_ALLOCATION;	
 		return NULL; /* couldn't allocate enough memory for reallocation/allocation */
 	}
+	printf("here\n");
 	/* 0 out of newly allocated memory for message_type field (type 0 means there is no content)  */
 	for (; last_initialized < alloc_size; ++last_initialized)
 		temp_output_array[last_initialized].message_type = 0;
@@ -138,7 +139,7 @@ User_Output * allocate_output_array_memory(User_Output *out, int *error_return)
 	return temp_output_array;
 }
 
-User_Output * init_output_array_memory(User_Output *old_output)
+User_Output * init_output_array_memory()
 {
 	User_Output *temp_output_array; 
 	size_t alloc_size = OUTPUT_ARRAY_INIT_SIZE;

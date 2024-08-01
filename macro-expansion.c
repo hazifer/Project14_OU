@@ -79,7 +79,7 @@ int expand_macros(char *sfname, char *dfname_holder, User_Output **out, int *err
 	/* free command to be used where we need */
 		return 1;
 	}
-	macro_array = allocate_macro_array_memory(macro_array, error_return);
+	macro_array = init_macro_array_memory();
 	if (*error_return)
 	{
 		if (*error_return == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT)
@@ -92,7 +92,7 @@ int expand_macros(char *sfname, char *dfname_holder, User_Output **out, int *err
 	/* free command to be used where we need */
 		return 1;
 	}
-	expand_macros_memory_allocated(sfname, dfname, fpin, fpout, line, out, macro_array, error_return);
+	expand_macros_memory_allocated(sfname, dfname, fpin, fpout, line, out, &macro_array, error_return);
 	/* sfname is freed in main */
 	if (*error_return)
 		remove(dfname);
@@ -105,7 +105,7 @@ int expand_macros(char *sfname, char *dfname_holder, User_Output **out, int *err
 	return 0;
 }
 
-int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output **out, Macro *macro_array, int *error_return)
+int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output **out, Macro **macro_array, int *error_return)
 {
 	char *li; /* line indexe */
 	Macro *temp_macro_array; /* for future macro_array memory reallocations */
@@ -131,7 +131,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		li = skip_blanks(li);
 		if (state == STATE_COMMAND)
 		{
-			return_value = expand_macros_handle_command_state(li, fpout, macro_array, next_macro_index);
+			return_value = expand_macros_handle_command_state(li, fpout, *macro_array, next_macro_index);
 			if (label_flag && is_newline_needed(return_value))
 				fputc('\n', fpout);
 			if (!return_value || return_value == MACRO_EXPANDED)
@@ -149,7 +149,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		}
 		else if (state == STATE_COLLECT_MACRO_CONTENT)
 		{
-			return_value = expand_macros_handle_collect_macro_content_state(li, out, macro_array, next_macro_index);
+			return_value = expand_macros_handle_collect_macro_content_state(li, out, *macro_array, next_macro_index);
 			if (return_value == MACRO_LINE_COLLECTED)
 			{
 				continue;
@@ -160,14 +160,14 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 				*error_return = return_value;
 				break;
 			}
-			temp_macro_array = increment_macro_array_index(macro_array, ++next_macro_index, &return_value);
+			temp_macro_array = increment_macro_array_index(*macro_array, ++next_macro_index, &return_value);
 			if (!temp_macro_array && (return_value == ERROR_PROGRAM_MEMORY_ALLOCATION || return_value == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT))
 			{
-				log_error(out, sfname, line, return_value, line_number, error_return);
+				log_error(out, sfname, line, return_value, return_value == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT ? 0 : line_number, error_return);
 				*error_return = return_value;
 				break;
 			}
-			macro_array = temp_macro_array ? temp_macro_array : macro_array;
+			*macro_array = temp_macro_array ? temp_macro_array : *macro_array;
 			state = STATE_COMMAND;
 		}
 	}
@@ -366,7 +366,7 @@ Macro * allocate_macro_array_memory(Macro *macro_array, int *error_return)
 	size_t alloc_size;
 	if (!macro_array)
 	{
-		macro_multiplier_factor = 0;
+		macro_multiplier_factor = 1;
 		return NULL;
 	}
 	alloc_size = ++macro_multiplier_factor * MACRO_ARRAY_INIT_SIZE; /* number of Macro structs to allocate memory for */
@@ -375,10 +375,7 @@ Macro * allocate_macro_array_memory(Macro *macro_array, int *error_return)
 		*error_return = ERROR_EXCEEDED_MACRO_ARRAY_LIMIT;
 		return NULL; 
 	}
-	if (macro_array) 
-		temp_macro_array = (Macro *)realloc(macro_array, alloc_size * sizeof(Macro)); /* realloc of macro_array */
-	else
-		temp_macro_array = (Macro *)malloc(alloc_size * sizeof(Macro)); /* malloc incase it wasn't allocated yet */
+	temp_macro_array = (Macro *)realloc(macro_array, alloc_size * sizeof(Macro)); /* realloc of macro_array */
 	if (!temp_macro_array)
 	{
 		*error_return = ERROR_PROGRAM_MEMORY_ALLOCATION;
@@ -396,18 +393,18 @@ Macro * increment_macro_array_index(Macro *macro_array, int next_macro_index, in
 	return temp_macro_array;
 }
 
-Macro * init_macro_array_memory(User_Output *old_output)
+Macro * init_macro_array_memory()
 {
 	Macro *temp_macro_array; 
 	size_t alloc_size = MACRO_ARRAY_INIT_SIZE;
-	temp_macro_array = (Macro *)calloc(alloc_size, sizeof(Macro));
 	reset_macro_array_indices();
+	temp_macro_array = (Macro *)calloc(alloc_size, sizeof(Macro));
 	return temp_macro_array;
 }
 
-void reset_output_array_indices()
+void reset_macro_array_indices()
 {
-	allocate_output_array_memory(NULL, NULL);
+	allocate_macro_array_memory(NULL, NULL);
 	return;
 }
 
