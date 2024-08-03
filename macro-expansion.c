@@ -15,6 +15,11 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 		if(!extended_filename)
 		{
 			log_error(out, filename, NULL, ERROR_SOURCE_FILE_MEMORY_ALLOCATION, 0, error_return);
+			if (*error_return)
+			{
+				*error_return = ERROR_OUTPUT_MEMORY_ALLOCATION;
+				return NULL;
+			}
 			*error_return = ERROR_SOURCE_FILE_MEMORY_ALLOCATION;
 			return NULL;
 		}
@@ -27,6 +32,10 @@ char * handle_filename_extension(char *filename, char extension[], User_Output *
 	if (!fp)
 	{
 		log_error(out, extended_filename, NULL, ERROR_SOURCE_FILE_ACCESS, 0, error_return);
+		if (*error_return) {
+				*error_return = ERROR_OUTPUT_MEMORY_ALLOCATION;
+				return NULL;
+		}
 		*error_return = ERROR_SOURCE_FILE_ACCESS;
 		return NULL;
 	}
@@ -50,6 +59,8 @@ int expand_macros(char *sfname, char *dfname_holder, User_Output **out, int *err
 	if (!dfname)
 	{
 		log_error(out, sfname, NULL, ERROR_DESTINATION_FILE_MEMORY_ALLOCATION, 0, error_return);
+		if (*error_return)
+				return ERROR_OUTPUT_MEMORY_ALLOCATION;
 	/* free command to be used where we need */
 		return 1;
 	}
@@ -62,6 +73,8 @@ int expand_macros(char *sfname, char *dfname_holder, User_Output **out, int *err
 	if (!fpin)
 	{
 		log_error(out, sfname, NULL, ERROR_SOURCE_FILE_ACCESS, 0, error_return);
+		if (*error_return)
+				return ERROR_OUTPUT_MEMORY_ALLOCATION;
 	/* free command to be used where we need */
 		return 1;
 	}
@@ -69,6 +82,8 @@ int expand_macros(char *sfname, char *dfname_holder, User_Output **out, int *err
 	if (!fpout)
 	{
 		log_error(out, dfname, NULL, ERROR_DESTINATION_FILE_ACCESS, 0, error_return);
+		if (*error_return)
+				return ERROR_OUTPUT_MEMORY_ALLOCATION;
 	/* free command to be used where we need */
 		return 1;
 	}
@@ -76,6 +91,8 @@ int expand_macros(char *sfname, char *dfname_holder, User_Output **out, int *err
 	if (!line)
 	{
 		log_error(out, sfname, line, ERROR_PROGRAM_MEMORY_ALLOCATION, 0, error_return);
+		if (*error_return)
+				return ERROR_OUTPUT_MEMORY_ALLOCATION;
 	/* free command to be used where we need */
 		return 1;
 	}
@@ -85,10 +102,14 @@ int expand_macros(char *sfname, char *dfname_holder, User_Output **out, int *err
 		if (*error_return == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT)
 		{
 			log_error(out, sfname, line, ERROR_EXCEEDED_MACRO_ARRAY_LIMIT, 0, error_return);
+			if (*error_return)
+					return ERROR_OUTPUT_MEMORY_ALLOCATION;
 	/* free command to be used where we need */
 			return 1;
 		}
 		log_error(out, sfname, line, ERROR_PROGRAM_MEMORY_ALLOCATION, 0, error_return);
+		if (*error_return)
+				return ERROR_OUTPUT_MEMORY_ALLOCATION;
 	/* free command to be used where we need */
 		return 1;
 	}
@@ -142,6 +163,8 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 			if (return_value != STATE_COLLECT_MACRO_CONTENT)
 			{
 				log_error(out, sfname, line, return_value, line_number, error_return);
+				if (*error_return)
+						return ERROR_OUTPUT_MEMORY_ALLOCATION;
 				*error_return = return_value;
 				break;
 			}
@@ -157,6 +180,8 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 			if (return_value == ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD || return_value == ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD)
 			{
 				log_error(out, sfname, line, return_value, line_number, error_return);
+				if (*error_return)
+						return ERROR_OUTPUT_MEMORY_ALLOCATION;
 				*error_return = return_value;
 				break;
 			}
@@ -164,6 +189,8 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 			if (!temp_macro_array && (return_value == ERROR_PROGRAM_MEMORY_ALLOCATION || return_value == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT))
 			{
 				log_error(out, sfname, line, return_value, return_value == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT ? 0 : line_number, error_return);
+				if (*error_return)
+						return ERROR_OUTPUT_MEMORY_ALLOCATION;
 				*error_return = return_value;
 				break;
 			}
@@ -323,17 +350,6 @@ char * read_till_endmacr_keyword(char *line, int *error_return)
 	/* macr_index is not NULL, since line was initially pointing to a non blank, there must be a word prior to the macr statement */
 	*error_return = ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD;
 	return NULL;
-}
-
-
-char verify_not_reserved(char *word)
-{
-	char *reserved_words[] = { "big", "nob", "test9", "haha" };
-	int arr_len = sizeof(reserved_words) / sizeof(char *);
-	for (arr_len--; arr_len >= 0; arr_len--)
-		if (!strcmp(reserved_words[arr_len], word))
-				return 0;
-	return 1;
 }
 
 char verify_macro_name_syntax(char *word)

@@ -48,10 +48,6 @@ int expand_macros_handle_collect_macro_content_state(char *line, User_Output **o
 char * read_till_macr_keyword(char *line, int *error_return);
 char * read_till_endmacr_keyword(char *line, int *error_return);
 
-/* verify_not_reserved: verifies input word against a static set of reserved words.
- * returns 1 if word is not one of the set
- * returns 0 if it is part of the set */
-char verify_not_reserved(char *word);
 
 /* verify_macro_name_syntax: verifies if the macro name is in a correct format 
  * returns 1 if it is

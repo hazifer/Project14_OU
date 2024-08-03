@@ -4,17 +4,22 @@ void log_error(User_Output **out, char *file_name, char *line, int error_type, i
 {
 	static int error_index;
 	char ln_str[MAX_LINE_DIGITS_IN_OUTPUT_FILE];
+	char line_message[MAX_CHARS_IN_LINE * ERROR_MESSAGE_LINE_LENGTH_MULTIPLIER];
 	User_Output *tmp;
-	if (!out && !error_return)
+	if (!out)
 	{
 		error_index = 0;
 		return;
 	}
+	*error_return = 0;
 	(*out)[error_index].message_type = error_type;
 	strcpy((*out)[error_index].message, ERROR_BASE_STRING);
 	strcat((*out)[error_index].message, file_name);
 	switch(error_type)
 	{
+		case ERROR_LABEL_RESERVED_WORD:
+			strcat((*out)[error_index].message, ": reserved language word used as label in line\n\t");
+			break;
 		case ERROR_LABEL_DUPLICATE:
 			strcat((*out)[error_index].message, ": an already defined label detected in line\n\t");
 			break;
@@ -72,11 +77,15 @@ void log_error(User_Output **out, char *file_name, char *line, int error_type, i
 		case ERROR_WORD_FOUND_AFTER_MACRO_NAME:
 			strcat((*out)[error_index].message, ": characters detected after macro name in line\n\t");
 			break;
-		case ERROR_EXCEEDED_OUTPUT_ARRAY_LIMIT:
-			strcat((*out)[error_index].message, ": too many errors in code, code ignored after line\n\t");
-			break;
 		case ERROR_EXCEEDED_MACRO_ARRAY_LIMIT:
 			strcat((*out)[error_index].message, ": Exceeded memory allocation limit, too many macros defined\n");
+			break;
+		case ERROR_EXCEEDED_OUTPUT_ARRAY_LIMIT:
+			printf("shoudln't get here\n");
+			strcat((*out)[error_index].message, ": too many errors in code, code ignored after line\n\t");
+			break;
+		case ERROR_EXCEEDED_LABEL_ARRAY_LIMIT:
+			strcat((*out)[error_index].message, ": Exceeded memory allocation limit, too many labels defined\n");
 			break;
 		default:
 			strcat((*out)[error_index].message, ": unknown error in line\n\t");
@@ -86,13 +95,26 @@ void log_error(User_Output **out, char *file_name, char *line, int error_type, i
 	{
 		(*out)[error_index].line = line_number;
 		itoa_base10(line_number, ln_str);
-		strcat((*out)[error_index].message, ln_str);
-		strcat((*out)[error_index].message, " - ");
-		strcat((*out)[error_index].message, line);
+		strcpy(line_message, ln_str);
+		strcat(line_message, " - ");
+		strcat(line_message, line);
+		strcat((*out)[error_index].message, line_message);
 	}
 	tmp = increment_output_array_index(*out, ++error_index, error_return);
 	if (tmp)
 		*out = tmp;
+	if (*error_return)
+	{
+		/* override last error, so the user knows the issue is due to memory allocation failure regarding the output array */
+		error_index--;
+		(*out)[error_index].message_type = error_type;
+		strcpy((*out)[error_index].message, ERROR_BASE_STRING);
+		strcat((*out)[error_index].message, file_name);
+		if (*error_return == ERROR_EXCEEDED_OUTPUT_ARRAY_LIMIT)
+			strcat((*out)[error_index].message, ": too many errors in code, you should probably fix the above errors first :).\n\tterminating program for the above input.\n");
+		else
+			strcat((*out)[error_index].message, ": couldn't allocate enough memory for the program.\n");
+	}
 }
 
 void print_errors(User_Output *out)

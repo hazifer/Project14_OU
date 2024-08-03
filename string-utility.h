@@ -27,4 +27,9 @@ int count_newlines(char *content);
 /* count_words_in_line: returns the number of words scanned delimited by the given delimiters */
 int count_words_in_line(char *line, char *delimiters, const int max_word_length);
 
+/* verify_not_reserved: verifies input word against a static set of reserved words.
+ * returns 1 if word is not one of the set
+ * returns 0 if it is part of the set */
+char verify_not_reserved(char *word);
+
 #endif /* STRINGUTILITY_H */

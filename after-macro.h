@@ -15,10 +15,20 @@ typedef struct Label {
 int begin_assembler(char *fname, char *after_macro_fname, Label **labels, User_Output **out);
 
 int first_after_macro_scan(FILE *fp, char *fname, Label **labels, User_Output **out);
+
+/* after_macro_handle_label: responsible for label portion handling after the macro expansion.
+ * calls for verify_label_syntax(), verify_label_unique(), and save_label()
+ * returns the first error seen from any of any above and sets it into error_return
+ * sets error_return to 0 if no error occurred and all of the above functions succeeded */
+void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int instruction_address, Label **label_array, int *error_return, int *stored_label_index);
+
 /* save_label: saves a label's name and decimal instruction address (using ic given) from a given line
- * returns errors according to issue:
+ * returns 0 on success, storing the added label's index in label_array into stored_index
+ * returns errors according to issue on failure:
+ *
+ *
  */
-int save_label(char *line, char *end, Label **label_array, int line_number, int instruction_address);
+int save_label(char *line, char *end, Label **label_array, int line_number, int instruction_address, int *stored_label_index);
 
 /* verify_label_syntax: verifies label syntax from beginning of line to end (which is assumed to be a pointer to the first ':' in line)
  * returns errors according to issue
