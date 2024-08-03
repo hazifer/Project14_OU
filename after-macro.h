@@ -8,6 +8,7 @@
 
 typedef struct Label {
 	char name[MAX_WORD_LENGTH];
+	char label_type;
 	unsigned int decimal_instruction_address;
 } Label;
 
