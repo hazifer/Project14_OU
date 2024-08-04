@@ -61,7 +61,7 @@ bi14
 bi13
 xdd:dbi12
 dsa:bi11
-label3: bi10
+label3:.external
 bi9
 bi8
 test: bi7

@@ -10,6 +10,8 @@ typedef struct Label {
 	char name[MAX_WORD_LENGTH];
 	char label_type;
 	unsigned int decimal_instruction_address;
+	char *string;
+	int *data;
 } Label;
 
 
@@ -21,6 +23,7 @@ int first_after_macro_scan(FILE *fp, char *fname, Label **labels, User_Output **
  * calls for verify_label_syntax(), verify_label_unique(), and save_label()
  * returns the first error seen from any of any above and sets it into error_return
  * sets error_return to 0 if no error occurred and all of the above functions succeeded */
+void after_macro_handle_label_line(char *line, char *colon_ptr, int line_number, int instruction_address, Label **label_array, int *error_return, int *stored_label_index);
 void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int instruction_address, Label **label_array, int *error_return, int *stored_label_index);
 
 /* save_label: saves a label's name and decimal instruction address (using ic given) from a given line
@@ -30,6 +33,10 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
  *
  */
 int save_label(char *line, char *end, Label **label_array, int line_number, int instruction_address, int *stored_label_index);
+
+/* save_label_data_type: sets a label's data type by testing against a word input 
+ * returns the type (although also stored into label_array[label_index]) */
+char save_label_data_type(Label *label_array, int label_index, char *word);
 
 /* verify_label_syntax: verifies label syntax from beginning of line to end (which is assumed to be a pointer to the first ':' in line)
  * returns errors according to issue
@@ -54,5 +61,7 @@ Label * allocate_label_array_memory(Label *label_array, int *error_return);
 Label * increment_label_array_index(Label *label_array, int next_label_index, int *error_return);
 Label * init_label_array_memory();
 void reset_label_array_indices();
+
+void print_labels(Label *label_array);
 
 #endif /* AFTERMACRO_H */

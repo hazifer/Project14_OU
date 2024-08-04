@@ -55,6 +55,7 @@ int main(int argc, char *argv[])
 			continue;
 		} 
 		print_errors(out);
+		print_labels(labels);
 		free(out);
 		free(labels);
 	}

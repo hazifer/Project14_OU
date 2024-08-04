@@ -17,49 +17,47 @@ int begin_assembler(char *fname, char *after_label_fname, Label **label_array, U
 
 int first_after_macro_scan(FILE *fp, char *fname, Label **label_array, User_Output **out)
 {
-	char line[MAX_CHARS_IN_LINE], *p;
+	char line[MAX_CHARS_IN_LINE], word[MAX_WORD_LENGTH], *line_ptr, in_label_line;
 	int line_number, instruction_address, return_value, error_return, label_index;
 	line_number = instruction_address = 0;
 	while (fgets(line, MAX_CHARS_IN_LINE, fp))
 	{
-		return_value = error_return = 0;
+		line_ptr = line;
+		return_value = error_return = in_label_line = 0;
 		++line_number;
-		if ((p = strchr(line, ':')))
+		if ((line_ptr = strchr(line, ':')))
 		{
-			after_macro_handle_label(line, p, line_number, instruction_address, label_array, &error_return, &label_index);
+			after_macro_handle_label_line(line, line_ptr, line_number, instruction_address, label_array, &error_return, &label_index);
 			if (error_return == ERROR_EXCEEDED_LABEL_ARRAY_LIMIT || error_return == ERROR_PROGRAM_MEMORY_ALLOCATION)
-			{
-				/* these kinds of errors must cause the program to stop for this file */
+			{	/* critical error */
 				log_error(out, fname, line, error_return, line_number, &error_return);
-				/* in the extreme case that an allocation error occurrs for the output array as well.. */
 				if (error_return)
 						return ERROR_OUTPUT_MEMORY_ALLOCATION;
 				return 1;
 			}
-			if (error_return)
-			{
-				log_error(out, fname, line, error_return, line_number, &error_return);
-				if (error_return)
-						return ERROR_OUTPUT_MEMORY_ALLOCATION;
-				continue;
-			}
+			++line_ptr;
+			line_ptr = skip_blanks(line_ptr);
+			in_label_line = 1;
 		}
-		if (p)
-			return_value = verify_line_syntax(p + 1);
-		else
-			return_value = verify_line_syntax(line);
-		/* return_value should hold the command type, be it opcode or the .data etc declarations */
-		if (return_value)
+		/* easier to assume here that no label is in existence here and just save words and their types */
+		if (!line_ptr)
+			line_ptr = line;
+		read_word_delimited(line_ptr, word, ",");
+		if (in_label_line)
+			return_value = save_label_data_type(*label_array, label_index, word);
+		if (return_value != LABEL_TYPE_GENERAL)
 		{
-			log_error(out, fname, line, return_value, line_number, &error_return);
-			if (error_return)
-					return ERROR_OUTPUT_MEMORY_ALLOCATION;
-			continue;
+			/* after_macro_handle_data_type(line, line_ptr, line_number, instruction_address, label_array, &error_return, &label_index); */
 		}
-		instruction_address += count_words_in_line(p + 1, ",", MAX_WORD_LENGTH);
+		/* should save word after word, incrementing instruction_address each time */
 	}
 	/* check if error and return accordingly */
 	return 0;
+}
+
+void after_macro_handle_label_line(char *line, char *colon_ptr, int line_number, int instruction_address, Label **label_array, int *error_return, int *stored_label_index)
+{
+	after_macro_handle_label(line, colon_ptr, line_number, instruction_address, label_array, error_return, stored_label_index);
 }
 
 void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int instruction_address, Label **label_array, int *error_return, int *stored_label_index)
@@ -87,11 +85,16 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
 		*error_return = ERROR_LABEL_RESERVED_WORD;
 		return;
 	}
-	return_value = save_label(line, colon_ptr, label_array, line_number, instruction_address, stored_label_index);
-	if (return_value)
+	/* handle case of "LABEL: .external" lines, in which we ignore the label */
+	read_word(colon_ptr + 1, word);
+	if (strcmp(word, ".external"))
 	{
-		*error_return = return_value;
-		return;
+		return_value = save_label(line, colon_ptr, label_array, line_number, instruction_address, stored_label_index);
+		if (return_value)
+		{
+			*error_return = return_value;
+			return;
+		}
 	}
 	*error_return = 0;
 }
@@ -166,7 +169,7 @@ int save_label(char *line, char *end, Label **label_array, int line_number, int 
 
 int verify_line_syntax(char *line)
 {
-	/* assumes line points past a verified syntax label */
+	/* assumes line points past a verified syntax label */ 
 	char word[MAX_WORD_LENGTH];
 	int type;
 	line = skip_blanks(line);
@@ -177,7 +180,6 @@ int verify_line_syntax(char *line)
 	{
 		read_word(line, word);
 		type = get_command_op_code_decimal(word);
-		printf("%s type %d\n", word, type);
 	}
 	else
 	{
@@ -258,3 +260,27 @@ void reset_label_array_indices()
 	save_label(NULL, NULL, NULL, 0, 0, NULL);
 	return;
 }
+
+void print_labels(Label *label_array)
+{
+	int i = 0;
+	while (label_array[i].decimal_instruction_address)
+		printf("%s\n", label_array[i++].name);
+}
+
+char save_label_data_type(Label *label_array, int label_index, char *word)
+{
+	if (!strcmp(word, ".data"))
+	{
+		(label_array)[label_index].label_type = LABEL_TYPE_DATA;
+		return LABEL_TYPE_DATA;
+	}
+	else if (!strcmp(word, ".string"))
+	{
+		(label_array)[label_index].label_type = LABEL_TYPE_STRING;
+		return LABEL_TYPE_STRING;
+	}
+	(label_array)[label_index].label_type = LABEL_TYPE_GENERAL;
+	return LABEL_TYPE_GENERAL;
+}
+

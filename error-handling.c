@@ -19,31 +19,31 @@ void log_error(User_Output **out, char *file_name, char *line, int error_type, i
 	{
 		case ERROR_COMMAND_UNKNOWN:
 			/* add command to be logged? */
-			strcat((*out)[error_index].message, ": command unknown in line\n\t");
+			strcat((*out)[error_index].message, ": command unknown in line ");
 			break;
 		case ERROR_LABEL_RESERVED_WORD:
-			strcat((*out)[error_index].message, ": reserved language word used as label in line\n\t");
+			strcat((*out)[error_index].message, ": reserved language word used as label in line ");
 			break;
 		case ERROR_COMMA_BEFORE_COMMAND:
-			strcat((*out)[error_index].message, ": invalid command syntax, comma detected before command in line\n\t");
+			strcat((*out)[error_index].message, ": invalid command syntax, comma detected before command in line ");
 			break;
 		case ERROR_LABEL_DUPLICATE:
-			strcat((*out)[error_index].message, ": an already defined label detected in line\n\t");
+			strcat((*out)[error_index].message, ": an already defined label detected in line ");
 			break;
 		case ERROR_LABEL_NOT_BEGIN_WITH_ALPHA:
-			strcat((*out)[error_index].message, ": label begins with a non alphabetic character in line\n\t");
+			strcat((*out)[error_index].message, ": label begins with a non alphabetic character in line ");
 			break;
 		case ERROR_LABEL_MULTIPLE_COLON:
-			strcat((*out)[error_index].message, ": multiple colons found (possibly multiple label declarations) in line\n\t");
+			strcat((*out)[error_index].message, ": multiple colons found (possibly multiple label declarations) in line ");
 			break;
 		case ERROR_LABEL_EMPTY:
-			strcat((*out)[error_index].message, ": empty label in line\n\t");
+			strcat((*out)[error_index].message, ": empty label in line ");
 			break;
 		case ERROR_LABEL_MULTIPLE_WORDS_PRE_COLON:
-			strcat((*out)[error_index].message, ": incorrect label format, multiple words found pre colon in line\n\t");
+			strcat((*out)[error_index].message, ": incorrect label format, multiple words found pre colon in line ");
 			break;
 		case ERROR_WORD_FOUND_PRE_MACR_KEYWORD:
-			strcat((*out)[error_index].message, ": atleast one word found before \"macr\" statement in line\n\t");
+			strcat((*out)[error_index].message, ": atleast one word found before \"macr\" statement in line ");
 			break;
 		case ERROR_SOURCE_FILE_ACCESS:
 			strcat((*out)[error_index].message, ": couldn't access file for reading.\n");
@@ -61,41 +61,41 @@ void log_error(User_Output **out, char *file_name, char *line, int error_type, i
 			strcat((*out)[error_index].message, ": couldn't allocate enough memory for the program.\n");
 			break;
 		case ERROR_MACRO_NAME_EMPTY:
-			strcat((*out)[error_index].message, ": empty macro name used in line\n\t");
+			strcat((*out)[error_index].message, ": empty macro name used in line ");
 			break;
 		case ERROR_MACRO_NAME_RESERVED_WORD:
-			strcat((*out)[error_index].message, ": reserved word used as macro name in line\n\t");
+			strcat((*out)[error_index].message, ": reserved word used as macro name in line ");
 			break;
 		case ERROR_WORD_FOUND_AFTER_MACR_KEYWORD:
-			strcat((*out)[error_index].message, ": characters detected after macro declaration in line\n\t");
+			strcat((*out)[error_index].message, ": characters detected after macro declaration in line ");
 			break;
 		case ERROR_MACRO_NAME_NOT_IN_LEGAL_SYNTAX:
-			strcat((*out)[error_index].message, ": ilegal macro name used (must begin with an alphabetic letter & cannot contain punctuations) in line\n\t");
+			strcat((*out)[error_index].message, ": ilegal macro name used (must begin with an alphabetic letter & cannot contain punctuations) in line ");
 			break;
 		case ERROR_MACRO_NAME_NOT_UNIQUE:
-			strcat((*out)[error_index].message, ": macro declared multiple times, second declaration in line\n\t");
+			strcat((*out)[error_index].message, ": macro declared multiple times, second declaration in line ");
 			break;
 		case ERROR_WORD_FOUND_PRE_ENDMACR_KEYWORD:
-			strcat((*out)[error_index].message, ": characters detected before end of macro declaration in line\n\t");
+			strcat((*out)[error_index].message, ": characters detected before end of macro declaration in line ");
 			break;
 		case ERROR_WORD_FOUND_AFTER_ENDMACR_KEYWORD:
-			strcat((*out)[error_index].message, ": characters detected after end of macro declaration in line\n\t");
+			strcat((*out)[error_index].message, ": characters detected after end of macro declaration in line ");
 			break;
 		case ERROR_WORD_FOUND_AFTER_MACRO_NAME:
-			strcat((*out)[error_index].message, ": characters detected after macro name in line\n\t");
+			strcat((*out)[error_index].message, ": characters detected after macro name in line ");
 			break;
 		case ERROR_EXCEEDED_MACRO_ARRAY_LIMIT:
 			strcat((*out)[error_index].message, ": Exceeded memory allocation limit, too many macros defined\n");
 			break;
 		case ERROR_EXCEEDED_OUTPUT_ARRAY_LIMIT:
 			printf("shoudln't get here\n");
-			strcat((*out)[error_index].message, ": too many errors in code, code ignored after line\n\t");
+			strcat((*out)[error_index].message, ": too many errors in code, code ignored after line ");
 			break;
 		case ERROR_EXCEEDED_LABEL_ARRAY_LIMIT:
 			strcat((*out)[error_index].message, ": Exceeded memory allocation limit, too many labels defined\n");
 			break;
 		default:
-			strcat((*out)[error_index].message, ": unknown error in line\n\t");
+			strcat((*out)[error_index].message, ": unknown error in line ");
 			break;
 	}
 	if (line_number)
@@ -103,7 +103,7 @@ void log_error(User_Output **out, char *file_name, char *line, int error_type, i
 		(*out)[error_index].line = line_number;
 		itoa_base10(line_number, ln_str);
 		strcpy(line_message, ln_str);
-		strcat(line_message, " - ");
+		strcat(line_message, ":\n\t\t");
 		strcat(line_message, line);
 		strcat((*out)[error_index].message, line_message);
 	}
