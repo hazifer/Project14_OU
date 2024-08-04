@@ -17,8 +17,15 @@ void log_error(User_Output **out, char *file_name, char *line, int error_type, i
 	strcat((*out)[error_index].message, file_name);
 	switch(error_type)
 	{
+		case ERROR_COMMAND_UNKNOWN:
+			/* add command to be logged? */
+			strcat((*out)[error_index].message, ": command unknown in line\n\t");
+			break;
 		case ERROR_LABEL_RESERVED_WORD:
 			strcat((*out)[error_index].message, ": reserved language word used as label in line\n\t");
+			break;
+		case ERROR_COMMA_BEFORE_COMMAND:
+			strcat((*out)[error_index].message, ": invalid command syntax, comma detected before command in line\n\t");
 			break;
 		case ERROR_LABEL_DUPLICATE:
 			strcat((*out)[error_index].message, ": an already defined label detected in line\n\t");

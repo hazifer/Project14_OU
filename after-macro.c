@@ -43,16 +43,20 @@ int first_after_macro_scan(FILE *fp, char *fname, Label **label_array, User_Outp
 						return ERROR_OUTPUT_MEMORY_ALLOCATION;
 				continue;
 			}
-			return_value = verify_line_syntax(p + 1);
-			if (return_value)
-			{
-				log_error(out, fname, line, return_value, line_number, &error_return);
-				if (error_return)
-						return ERROR_OUTPUT_MEMORY_ALLOCATION;
-				continue;
-			}
-			instruction_address += count_words_in_line(p + 1, ",", MAX_WORD_LENGTH);
 		}
+		if (p)
+			return_value = verify_line_syntax(p + 1);
+		else
+			return_value = verify_line_syntax(line);
+		/* return_value should hold the command type, be it opcode or the .data etc declarations */
+		if (return_value)
+		{
+			log_error(out, fname, line, return_value, line_number, &error_return);
+			if (error_return)
+					return ERROR_OUTPUT_MEMORY_ALLOCATION;
+			continue;
+		}
+		instruction_address += count_words_in_line(p + 1, ",", MAX_WORD_LENGTH);
 	}
 	/* check if error and return accordingly */
 	return 0;
@@ -162,10 +166,32 @@ int save_label(char *line, char *end, Label **label_array, int line_number, int 
 
 int verify_line_syntax(char *line)
 {
+	/* assumes line points past a verified syntax label */
+	char word[MAX_WORD_LENGTH];
+	int type;
+	line = skip_blanks(line);
+	/* should try to read .YYY or <command> */
+	if (*line == ',')
+		return ERROR_COMMA_BEFORE_COMMAND;
+	if (*line != '.')
+	{
+		read_word(line, word);
+		type = get_command_op_code_decimal(word);
+		printf("%s type %d\n", word, type);
+	}
+	else
+	{
+		++line;
+		read_word(line, word);
+		type = get_command_op_code_decimal(word);
+		/*type = get_data_type(word);*/
+	}
+	if (type == -1)
+		return ERROR_COMMAND_UNKNOWN;
 	return 0;
 }
 
-int get_command_op_code_decimal(char *op)
+char get_command_op_code_decimal(char *op)
 {
 	int i;
 	char *command_set[NUMBER_OF_COMMANDS] = { "mov", "cmp", "add", "sub", 

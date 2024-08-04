@@ -48,7 +48,7 @@ int verify_label_unique(char *line, char *end, Label **label_array);
 int verify_line_syntax(char *line);
 
 /* receives a possible op word, and returns it's decimal value opcode if it's an assembly word or -1 if it isn't */
-int get_command_op_code_decimal(char *op);
+char get_command_op_code_decimal(char *op);
 
 Label * allocate_label_array_memory(Label *label_array, int *error_return);
 Label * increment_label_array_index(Label *label_array, int next_label_index, int *error_return);

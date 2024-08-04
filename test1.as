@@ -51,11 +51,8 @@ endmacr
 macr bi15
 biglabelw:	15
 endmacr
-test
-	one tab
-    spaces
 bi
-
+jmp
 bi
 bi9
 bi15

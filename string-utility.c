@@ -42,6 +42,7 @@ int read_word(char *line, char *word)
 	{
 		while ((word[len] = *line) && word[len] != ' ' && word[len] != '\t' && word[len] != '\n')
 			++line, ++len;
+		/* not needed? */
 		word[len] = '\0';
 	}
 	else
@@ -52,12 +53,12 @@ int read_word(char *line, char *word)
 
 int read_word_delimited(char *line, char *word, char *delimiters)
 {
-	int word_len, i;
+	int len, i;
 	char c;
-	word_len = i = 0;
-	while ((c = line[word_len]) && c != ' ' && strchr(delimiters, c))
-		++word_len;
-	return word_len;
+	len = i = 0;
+	while ((c = line[len]) && c != ' ' && c != '\t' && c != '\n' && !strchr(delimiters, c))
+		++len;
+	return len;
 }
 
 int count_newlines(char *content)
