@@ -121,6 +121,7 @@ void after_macro_save_words(char *line, int instructions_address, int *error_ret
 
 int after_macro_verify_command_till_arguments(char *line, char *command_code)
 {
+	/* assume the first character is non blank */
 	char word[MAX_WORD_LENGTH];
 	int word_len = read_word_delimited(line, word, ",");
 	if (!word_len)
