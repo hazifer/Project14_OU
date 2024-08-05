@@ -12,16 +12,18 @@ typedef struct Label {
 	unsigned int decimal_instruction_address;
 } Label;
 
+typedef struct Operation_build {
+	unsigned int opcode				:  4;
+	unsigned int src_addressing_type		:  4;
+	unsigned int dst_addressing_type		:  4;
+	unsigned int are_type				:  4;
+} Operation_build;
+
 typedef struct Word {
 	unsigned int decimal_instruction_address	: 16;
 	union {
 		unsigned int value			: 16; 
-		struct operation {
-			unsigned int opcode		:  4;
-			unsigned int src_addressing_type:  4;
-			unsigned int dst_addressing_type:  4;
-			unsigned int are_type		:  4;
-		} operation;
+		Operation_build operation_build;
 	} Data;
 } Word;
 
@@ -39,7 +41,7 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
  * this is done starting a line, and the call ends with that line
  * after_macro_save_words saves the first syntax error from a line into int *error_return for the callee's use */
 void after_macro_save_words(char *line, int instructions_address, int *error_return, Word **word_array);
-int after_macro_verify_command_till_arguments(char *line, char *command_code);
+int after_macro_verify_command_till_arguments(char **line, char *command_code);
 
 /* save_label: saves a label's name and decimal instruction address (using ic given) from a given line
  * returns 0 on success, storing the added label's index in label_array into stored_index
@@ -49,7 +51,7 @@ int after_macro_verify_command_till_arguments(char *line, char *command_code);
  */
 int save_label(char *line, char *end, Label **label_array, int line_number, int instruction_address, int *stored_label_index);
 
-int save_word(char *line, char *end, Word **word_array, int line_number, int instruction_address);
+int save_word(char *line, char *end, Word **word_array, int line_number, int instruction_address, int *stored_word_index);
 
 /* save_label_data_type: sets a label's data type by testing against a word input 
  * returns the type (although also stored into label_array[label_index]) */
@@ -75,6 +77,9 @@ int verify_line_syntax(char *line);
 
 /* receives a possible op word, and returns it's decimal value opcode if it's an assembly word or -1 if it isn't */
 char get_command_op_code_decimal(char *op);
+/* is_opcode: return 1 if input is between 0 and 15 (the decimal opcodes for the program)
+ * return 0 otherwise */
+char is_opcode(int code);
 
 Label * init_label_array_memory();
 Label * allocate_label_array_memory(Label *label_array, int *error_return);

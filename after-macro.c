@@ -106,27 +106,32 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
 	*error_return = 0;
 }
 
-void after_macro_save_words(char *line, int instructions_address, int *error_return, Word **word_array)
+void after_macro_save_words(char *line, int instruction_address, int *error_return, Word **word_array)
 {
 	/* assume non blank at *line */
 	char command_code;
 	int command_invalid;
-	command_invalid = after_macro_verify_command_till_arguments(line, &command_code); /* send &line to allow reading after verify_command ? */
+	Operation_build op_build = { 0 };
+	command_invalid = after_macro_verify_command_till_arguments(&line, &command_code);
 	if (command_invalid) {
 		*error_return = command_invalid;
 		return;
 	}
+	if (is_opcode(command_code))
+	{
+		/* values to store into command word change according to the addressing type of src and dst */
+	}
 	*error_return = 0;
 }
 
-int after_macro_verify_command_till_arguments(char *line, char *command_code)
+int after_macro_verify_command_till_arguments(char **line, char *command_code)
 {
 	/* assume the first character is non blank */
 	char word[MAX_WORD_LENGTH];
-	int word_len = read_word_delimited(line, word, ",");
+	int word_len = read_word_delimited(*line, word, ",");
 	if (!word_len)
 	{
-		if (*line == ',')
+		if (**line == ',')
 			return ERROR_COMMA_BEFORE_COMMAND;
 		return 0; /* blank line, no words are saved which is fine */
 	}
@@ -134,20 +139,20 @@ int after_macro_verify_command_till_arguments(char *line, char *command_code)
 	if (*command_code == -1)
 	{
 		/* not a command from the 16 commands available, must be a declaration to be a part of the language */
-		if (*line != '.') /* this reduces some of the checks */
+		if (**line != '.') /* this reduces some of the checks */
 			return ERROR_COMMAND_UNKNOWN;
 		*command_code = get_declaration_type(word);
 		if (!(*command_code))
 			return ERROR_COMMAND_UNKNOWN;
-		line += word_len;
-		line = skip_blanks(line);
-		if (*line == ',')
+		*line += word_len;
+		*line = skip_blanks(*line);
+		if (**line == ',')
 			return ERROR_COMMA_AFTER_COMMAND;
 		return 0;
 	}
-	line += word_len;
-	line = skip_blanks(line);
-	if (*line == ',')
+	*line += word_len;
+	*line = skip_blanks(*line);
+	if (**line == ',')
 		return ERROR_COMMA_AFTER_COMMAND;
 	return 0;
 }
@@ -220,21 +225,22 @@ int save_label(char *line, char *end, Label **label_array, int line_number, int 
 	return error_return;
 }
 
-int save_word(char *line, char *end, Word **word_array, int line_number, int instruction_address)
+int save_word(char *line, char *end, Word **word_array, int line_number, int instruction_address, int *stored_word_index)
 {
 	static int next_word_array_index;
 	/*char word[MAX_WORD_LENGTH];*/
-	Word *tmp;
+	Word *tmp_for_allocation, *word_array_dereference;
 	int error_return = 0;
 	if (!word_array)
 	{
 		next_word_array_index = 0;
 		return 0;
 	}
-	(*word_array)[next_word_array_index].decimal_instruction_address = instruction_address + line_number;
-	tmp = increment_word_array_index(*word_array, ++next_word_array_index, &error_return);
-	if (tmp)
-		*word_array = tmp;
+	word_array_dereference = *word_array;
+	word_array_dereference[next_word_array_index].decimal_instruction_address = instruction_address + line_number;
+	tmp_for_allocation = increment_word_array_index(word_array_dereference, ++next_word_array_index, &error_return);
+	if (tmp_for_allocation)
+		*word_array = tmp_for_allocation;
 	return error_return;
 }
 
@@ -383,7 +389,7 @@ Word * init_word_array_memory()
 void reset_word_array_indices()
 {
 	allocate_word_array_memory(NULL, NULL);
-	save_word(NULL, NULL, NULL, 0, 0);
+	save_word(NULL, NULL, NULL, 0, 0, NULL);
 	return;
 }
 
@@ -412,4 +418,9 @@ char get_declaration_type(char *word)
 	else if (!strcmp(word, ".entry"))
 		return TYPE_ENTRY;
 	return 0;
+}
+
+char is_opcode(int code)
+{
+	return (code >= 0 && code <= 15);
 }
