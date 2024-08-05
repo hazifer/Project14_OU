@@ -1,6 +1,6 @@
 #include "after-macro.h"
 
-int begin_assembler(char *fname, char *after_label_fname, Label **label_array, User_Output **out)
+int begin_assembler(char *fname, char *after_label_fname, Word **word_array, Label **label_array, User_Output **out)
 {
 	int return_value;
 	FILE *fp = fopen(after_label_fname, "r");
@@ -8,22 +8,21 @@ int begin_assembler(char *fname, char *after_label_fname, Label **label_array, U
 	{
 		return 1;
 	}
-	return_value = first_after_macro_scan(fp, after_label_fname, label_array, out);
+	return_value = first_after_macro_scan(fp, after_label_fname, word_array, label_array, out);
 	fclose(fp);
 	if (return_value)
 		return 1;
 	return 0;
 }
 
-int first_after_macro_scan(FILE *fp, char *fname, Label **label_array, User_Output **out)
+int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **label_array, User_Output **out)
 {
-	char line[MAX_CHARS_IN_LINE], word[MAX_WORD_LENGTH], *line_ptr, in_label_line;
-	int line_number, instruction_address, return_value, error_return, label_index;
+	char line[MAX_CHARS_IN_LINE], *line_ptr;
+	int line_number, instruction_address, error_return, label_index;
 	line_number = instruction_address = 0;
 	while (fgets(line, MAX_CHARS_IN_LINE, fp))
 	{
 		line_ptr = line;
-		return_value = error_return = in_label_line = 0;
 		++line_number;
 		if ((line_ptr = strchr(line, ':')))
 		{
@@ -43,27 +42,28 @@ int first_after_macro_scan(FILE *fp, char *fname, Label **label_array, User_Outp
 			}
 			++line_ptr;
 			line_ptr = skip_blanks(line_ptr);
-			in_label_line = 1;
 		}
-		/* easier to assume here that no label is in existence here and just save words and their types */
+		/* easier to assume (and rightly so) that no label is in existence from here on and just save words and their types */
 		if (!line_ptr)
 			line_ptr = line;
-		read_word_delimited(line_ptr, word, ",");
-		if (in_label_line)
-			return_value = save_label_data_type(*label_array, label_index, word);
-		if (return_value != LABEL_TYPE_GENERAL)
-		{
-			/* after_macro_handle_data_type(line, line_ptr, line_number, instruction_address, label_array, &error_return, &label_index); */
-		}
 		/* should save word after word, incrementing instruction_address each time */
+		after_macro_save_words(line_ptr, instruction_address, &error_return, word_array);
+		if (error_return == ERROR_EXCEEDED_WORD_ARRAY_LIMIT || error_return == ERROR_PROGRAM_MEMORY_ALLOCATION)
+		{	/* program runtime critical error */
+			log_error(out, fname, line, error_return, line_number, &error_return);
+			if (error_return)
+					return ERROR_OUTPUT_MEMORY_ALLOCATION;
+			return 1;
+		}
+		if (error_return)
+		{	/* source file code error */
+			log_error(out, fname, line, error_return, line_number, &error_return);
+			if (error_return)
+					return ERROR_OUTPUT_MEMORY_ALLOCATION;
+		}
+		/* after_macro_handle_data_type(line, line_ptr, line_number, instruction_address, label_array, &error_return, &label_index); */
 	}
-	/* check if error and return accordingly */
 	return 0;
-}
-
-void after_macro_handle_label_line(char *line, char *colon_ptr, int line_number, int instruction_address, Label **label_array, int *error_return, int *stored_label_index)
-{
-	after_macro_handle_label(line, colon_ptr, line_number, instruction_address, label_array, error_return, stored_label_index);
 }
 
 void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int instruction_address, Label **label_array, int *error_return, int *stored_label_index)
@@ -101,8 +101,14 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
 			*error_return = return_value;
 			return;
 		}
+		save_label_data_type(*label_array, *stored_label_index, word);
 	}
 	*error_return = 0;
+}
+
+void after_macro_save_words(char *line, int instructions_address, int *error_return, Word **word_array)
+{
+
 }
 
 int verify_label_syntax(char *line, char *end)
@@ -170,6 +176,24 @@ int save_label(char *line, char *end, Label **label_array, int line_number, int 
 	tmp = increment_label_array_index(*label_array, ++next_label_array_index, &error_return);
 	if (tmp)
 		*label_array = tmp;
+	return error_return;
+}
+
+int save_word(char *line, char *end, Word **word_array, int line_number, int instruction_address)
+{
+	static int next_word_array_index;
+	/*char word[MAX_WORD_LENGTH];*/
+	Word *tmp;
+	int error_return = 0;
+	if (!word_array)
+	{
+		next_word_array_index = 0;
+		return 0;
+	}
+	(*word_array)[next_word_array_index].decimal_instruction_address = instruction_address + line_number;
+	tmp = increment_word_array_index(*word_array, ++next_word_array_index, &error_return);
+	if (tmp)
+		*word_array = tmp;
 	return error_return;
 }
 
@@ -264,6 +288,61 @@ void reset_label_array_indices()
 {
 	allocate_label_array_memory(NULL, NULL);
 	save_label(NULL, NULL, NULL, 0, 0, NULL);
+	return;
+}
+
+Word * increment_word_array_index(Word *word_array, int next_word_index, int *error_return)
+{
+	Word *temp_word_array = NULL;
+	if (next_word_index % WORD_ARRAY_INIT_SIZE == 0)
+		temp_word_array = allocate_word_array_memory(word_array, error_return); 
+	return temp_word_array;
+}
+
+Word * allocate_word_array_memory(Word *word_array, int *error_return)
+{
+	static char word_multiplier_factor; /* acts as a multiplier to increase word_array size with jumps of WORDINIT */
+	Word *temp_word_array; 
+	int last_initialized;
+	size_t alloc_size;
+	if (!word_array)
+	{
+		word_multiplier_factor = 1;
+		return NULL;
+	}
+	last_initialized = word_multiplier_factor++ * WORD_ARRAY_INIT_SIZE;
+	alloc_size = last_initialized + WORD_ARRAY_INIT_SIZE;
+	if (word_multiplier_factor > WORD_ARRAY_SIZE_MULTIPLIER_LIMIT)
+	{
+		*error_return = ERROR_EXCEEDED_WORD_ARRAY_LIMIT;
+		return NULL; 
+	}
+	temp_word_array = (Word *)realloc(word_array, alloc_size * sizeof(Word)); /* realloc of macro_array */
+	if (!temp_word_array)
+	{
+		*error_return = ERROR_PROGRAM_MEMORY_ALLOCATION;	
+		return NULL; /* couldn't allocate enough memory for reallocation/allocation */
+	}
+	/* 0 out of newly allocated memory for decimal_instruction_address field (type 0 means there is no content)  */
+	for (; last_initialized < alloc_size; ++last_initialized)
+		temp_word_array[last_initialized].decimal_instruction_address = 0;
+	*error_return = 0;
+	return temp_word_array;
+}
+
+Word * init_word_array_memory()
+{
+	Word *temp_word_array; 
+	size_t alloc_size = WORD_ARRAY_INIT_SIZE;
+	temp_word_array = (Word *)calloc(alloc_size, sizeof(Word));
+	reset_word_array_indices();
+	return temp_word_array;
+}
+
+void reset_word_array_indices()
+{
+	allocate_word_array_memory(NULL, NULL);
+	save_word(NULL, NULL, NULL, 0, 0);
 	return;
 }
 

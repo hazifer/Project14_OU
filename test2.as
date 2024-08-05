@@ -9,7 +9,7 @@ endmacr
 macr bi1
 1
 endmacr
-label1:	macr bi2
+label19:macr bi2
 2
 endmacr
 macr bi3

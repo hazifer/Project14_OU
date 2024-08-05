@@ -8,6 +8,7 @@ int main(int argc, char *argv[])
 	char *fname, after_macro_fname[MAX_FILENAME_LENGTH];
 	Label *labels = NULL;
 	User_Output *out = NULL;
+	Word *words = NULL;
 	while (argc-- > 1)
 	{
 		error_return = 0;
@@ -46,18 +47,28 @@ int main(int argc, char *argv[])
 			free(out);
 			continue;
 		}
-		return_value = begin_assembler(fname, after_macro_fname, &labels, &out);
+		words = init_word_array_memory();
+		if (!words)
+		{
+			printf("error initializing memory for the program for input \"%s\"\n", argv[argc]);
+			free(out);
+			free(labels);
+			continue;
+		}
+		return_value = begin_assembler(fname, after_macro_fname, &words, &labels, &out);
 		if (return_value) 
 		{
 			print_errors(out);
 			free(out);
 			free(labels);
+			free(words);
 			continue;
-		} 
+		}
 		print_errors(out);
 		print_labels(labels);
 		free(out);
 		free(labels);
+		free(words);
 	}
 	return 0;
 }
