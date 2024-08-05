@@ -38,6 +38,8 @@ int save_label(char *line, char *end, Label **label_array, int line_number, int 
  * returns the type (although also stored into label_array[label_index]) */
 char save_label_data_type(Label *label_array, int label_index, char *word);
 
+char get_data_type(char *word);
+
 /* verify_label_syntax: verifies label syntax from beginning of line to end (which is assumed to be a pointer to the first ':' in line)
  * returns errors according to issue
  * returns 0 when the syntax is okay */

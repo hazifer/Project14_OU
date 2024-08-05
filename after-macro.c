@@ -27,13 +27,19 @@ int first_after_macro_scan(FILE *fp, char *fname, Label **label_array, User_Outp
 		++line_number;
 		if ((line_ptr = strchr(line, ':')))
 		{
-			after_macro_handle_label_line(line, line_ptr, line_number, instruction_address, label_array, &error_return, &label_index);
+			after_macro_handle_label(line, line_ptr, line_number, instruction_address, label_array, &error_return, &label_index);
 			if (error_return == ERROR_EXCEEDED_LABEL_ARRAY_LIMIT || error_return == ERROR_PROGRAM_MEMORY_ALLOCATION)
-			{	/* critical error */
+			{	/* program runtime critical error */
 				log_error(out, fname, line, error_return, line_number, &error_return);
 				if (error_return)
 						return ERROR_OUTPUT_MEMORY_ALLOCATION;
 				return 1;
+			}
+			if (error_return)
+			{	/* source file code error */
+				log_error(out, fname, line, error_return, line_number, &error_return);
+				if (error_return)
+						return ERROR_OUTPUT_MEMORY_ALLOCATION;
 			}
 			++line_ptr;
 			line_ptr = skip_blanks(line_ptr);
@@ -270,17 +276,16 @@ void print_labels(Label *label_array)
 
 char save_label_data_type(Label *label_array, int label_index, char *word)
 {
-	if (!strcmp(word, ".data"))
-	{
-		(label_array)[label_index].label_type = LABEL_TYPE_DATA;
-		return LABEL_TYPE_DATA;
-	}
-	else if (!strcmp(word, ".string"))
-	{
-		(label_array)[label_index].label_type = LABEL_TYPE_STRING;
-		return LABEL_TYPE_STRING;
-	}
-	(label_array)[label_index].label_type = LABEL_TYPE_GENERAL;
-	return LABEL_TYPE_GENERAL;
+	char data_type = get_data_type(word);
+	(label_array)[label_index].label_type = data_type;
+	return data_type;
 }
 
+char get_data_type(char *word)
+{
+	if (!strcmp(word, ".data"))
+		return LABEL_TYPE_DATA;
+	else if (!strcmp(word, ".string"))
+		return LABEL_TYPE_STRING;
+	return LABEL_TYPE_GENERAL;
+}
