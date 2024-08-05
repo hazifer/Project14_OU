@@ -39,6 +39,7 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
  * this is done starting a line, and the call ends with that line
  * after_macro_save_words saves the first syntax error from a line into int *error_return for the callee's use */
 void after_macro_save_words(char *line, int instructions_address, int *error_return, Word **word_array);
+int after_macro_verify_command_till_arguments(char *line, char *command_code);
 
 /* save_label: saves a label's name and decimal instruction address (using ic given) from a given line
  * returns 0 on success, storing the added label's index in label_array into stored_index
@@ -54,7 +55,7 @@ int save_word(char *line, char *end, Word **word_array, int line_number, int ins
  * returns the type (although also stored into label_array[label_index]) */
 char save_label_data_type(Label *label_array, int label_index, char *word);
 
-char get_data_type(char *word);
+char get_declaration_type(char *word);
 
 /* verify_label_syntax: verifies label syntax from beginning of line to end (which is assumed to be a pointer to the first ':' in line)
  * returns errors according to issue

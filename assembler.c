@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
 		}
 		print_errors(out);
 		print_labels(labels);
+		printf("%d\n", ERROR_COMMAND_UNKNOWN);
 		free(out);
 		free(labels);
 		free(words);

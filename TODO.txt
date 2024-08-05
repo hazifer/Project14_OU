@@ -3,3 +3,5 @@
 		if exists, assuming lines started with non blank, check for a blank before that index - if exists, return an error
 -	fix double \n on when label+regular command are in line
 -	is an error array needed? why not just print errors?..
+-	is label data type needed?
+-	labels should conform to digit and alphabetic characters only

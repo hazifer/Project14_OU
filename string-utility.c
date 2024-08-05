@@ -56,8 +56,9 @@ int read_word_delimited(char *line, char *word, char *delimiters)
 	int len, i;
 	char c;
 	len = i = 0;
-	while ((c = line[len]) && c != ' ' && c != '\t' && c != '\n' && !strchr(delimiters, c))
+	while ((c = word[len] = line[len]) && c != ' ' && c != '\t' && c != '\n' && !strchr(delimiters, c))
 		++len;
+	word[len] = '\0';
 	return len;
 }
 

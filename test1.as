@@ -37,7 +37,7 @@ macr bi10
 10
 endmacr
 macr bi11
-11
+add
 endmacr
 macr bi12
 12
@@ -52,7 +52,7 @@ macr bi15
 biglabelw:	15
 endmacr
 bi
-jmp
+ 	 jmp,
 bi
 bi9
 bi15
@@ -61,7 +61,7 @@ bi14
 bi13
 xdd:dbi12
 dsa:bi11
-label3:.external
+label3:.extern		
 bi9
 bi8
 test: bi7

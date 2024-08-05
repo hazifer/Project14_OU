@@ -2,7 +2,7 @@
 
 label1:
 biglabelw:bi
-jmp
+jmp,
 bi
 9
 15
@@ -11,8 +11,8 @@ bi16
 13
 xdd:dbi12
 
-dsa:11
-label3:.external
+dsa:add
+label3:.extern		
 
 9
 8

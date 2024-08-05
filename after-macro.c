@@ -45,7 +45,7 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 		}
 		/* easier to assume (and rightly so) that no label is in existence from here on and just save words and their types */
 		if (!line_ptr)
-			line_ptr = line;
+			line_ptr = skip_blanks(line);
 		/* should save word after word, incrementing instruction_address each time */
 		after_macro_save_words(line_ptr, instruction_address, &error_return, word_array);
 		if (error_return == ERROR_EXCEEDED_WORD_ARRAY_LIMIT || error_return == ERROR_PROGRAM_MEMORY_ALLOCATION)
@@ -91,9 +91,9 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
 		*error_return = ERROR_LABEL_RESERVED_WORD;
 		return;
 	}
-	/* handle case of "LABEL: .external" lines, in which we ignore the label */
+	/* handle case of "LABEL: .extern" lines, in which we ignore the label */
 	read_word(colon_ptr + 1, word);
-	if (strcmp(word, ".external"))
+	if (strcmp(word, ".extern"))
 	{
 		return_value = save_label(line, colon_ptr, label_array, line_number, instruction_address, stored_label_index);
 		if (return_value)
@@ -108,7 +108,47 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
 
 void after_macro_save_words(char *line, int instructions_address, int *error_return, Word **word_array)
 {
+	/* assume non blank at *line */
+	char command_code;
+	int command_invalid;
+	command_invalid = after_macro_verify_command_till_arguments(line, &command_code); /* send &line to allow reading after verify_command ? */
+	if (command_invalid) {
+		*error_return = command_invalid;
+		return;
+	}
+	*error_return = 0;
+}
 
+int after_macro_verify_command_till_arguments(char *line, char *command_code)
+{
+	char word[MAX_WORD_LENGTH];
+	int word_len = read_word_delimited(line, word, ",");
+	if (!word_len)
+	{
+		if (*line == ',')
+			return ERROR_COMMA_BEFORE_COMMAND;
+		return 0; /* blank line, no words are saved which is fine */
+	}
+	*command_code = get_command_op_code_decimal(word);
+	if (*command_code == -1)
+	{
+		/* not a command from the 16 commands available, must be a declaration to be a part of the language */
+		if (*line != '.') /* this reduces some of the checks */
+			return ERROR_COMMAND_UNKNOWN;
+		*command_code = get_declaration_type(word);
+		if (!(*command_code))
+			return ERROR_COMMAND_UNKNOWN;
+		line += word_len;
+		line = skip_blanks(line);
+		if (*line == ',')
+			return ERROR_COMMA_AFTER_COMMAND;
+		return 0;
+	}
+	line += word_len;
+	line = skip_blanks(line);
+	if (*line == ',')
+		return ERROR_COMMA_AFTER_COMMAND;
+	return 0;
 }
 
 int verify_label_syntax(char *line, char *end)
@@ -355,16 +395,20 @@ void print_labels(Label *label_array)
 
 char save_label_data_type(Label *label_array, int label_index, char *word)
 {
-	char data_type = get_data_type(word);
+	char data_type = get_declaration_type(word);
 	(label_array)[label_index].label_type = data_type;
 	return data_type;
 }
 
-char get_data_type(char *word)
+char get_declaration_type(char *word)
 {
 	if (!strcmp(word, ".data"))
-		return LABEL_TYPE_DATA;
+		return TYPE_DATA;
 	else if (!strcmp(word, ".string"))
-		return LABEL_TYPE_STRING;
-	return LABEL_TYPE_GENERAL;
+		return TYPE_STRING;
+	else if (!strcmp(word, ".extern"))
+		return TYPE_EXTERN;
+	else if (!strcmp(word, ".entry"))
+		return TYPE_ENTRY;
+	return 0;
 }
