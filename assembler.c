@@ -69,8 +69,6 @@ int main(int argc, char *argv[])
 		free(out);
 		free(labels);
 		free(words);
-		printf("size = %d\n", sizeof(Operation_build));
-		printf("size = %d\n", sizeof(Word));
 	}
 	return 0;
 }

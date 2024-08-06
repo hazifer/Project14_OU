@@ -117,10 +117,20 @@ void after_macro_save_words(char *line, int instruction_address, int *error_retu
 		*error_return = command_invalid;
 		return;
 	}
+
+	/* CONVERT TO 4 BITS BINARY!!! */
+	op_build.opcode = command_code;
 	if (is_opcode(command_code))
-	{
-		/* values to store into command word change according to the addressing type of src and dst */
+		command_invalid = after_macro_read_save_command_parameters(line, instruction_address, &op_build, word_array); /* save words? */
+	else {
+/*		command_invalid = after_macro_read_declaration(line, instruction_address, ? );*/
 	}
+	if (command_invalid) 
+	{
+		*error_return = command_invalid;
+		return;
+	}
+	/*save_command_word(command_code, op_build, word_array);*/
 	*error_return = 0;
 }
 
@@ -155,6 +165,16 @@ int after_macro_verify_command_till_arguments(char **line, char *command_code)
 	if (**line == ',')
 		return ERROR_COMMA_AFTER_COMMAND;
 	return 0;
+}
+
+int after_macro_read_save_command_parameters(char *line, int instruction_address, Operation_build *op_build, Word **word_array)
+{
+	/* assume line points to a non ',' character */
+	char word[MAX_WORD_LENGTH];
+	int word_len, dst_addressing_type, src_addressing_type;
+	if (*line == '#')
+	word_len = read_word_delimited(line, word, ",");
+
 }
 
 int verify_label_syntax(char *line, char *end)

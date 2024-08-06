@@ -43,6 +43,8 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
 void after_macro_save_words(char *line, int instructions_address, int *error_return, Word **word_array);
 int after_macro_verify_command_till_arguments(char **line, char *command_code);
 
+int after_macro_read_save_command_parameters(char *line, int instruction_address, Operation_build *op_build, Word **word_array);
+
 /* save_label: saves a label's name and decimal instruction address (using ic given) from a given line
  * returns 0 on success, storing the added label's index in label_array into stored_index
  * returns errors returned by increment_label_array_index():
