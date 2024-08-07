@@ -47,6 +47,8 @@ int main(int argc, char *argv[])
 			free(words);
 			continue;
 		}
+		print_labels(labels);
+		print_words(words);
 		free(labels);
 		free(words);
 	}

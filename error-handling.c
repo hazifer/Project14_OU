@@ -2,13 +2,22 @@
 
 void print_error(char *file_name, char *line, int error_type, int line_number)
 {
-	char line_in_str[MAX_LINE_DIGITS_IN_OUTPUT_FILE];
+	char num_str[MAX_LINE_DIGITS_IN_OUTPUT_FILE];
 	char output_message[MAX_CHARS_IN_LINE * ERROR_MESSAGE_LINE_LENGTH_MULTIPLIER];
 	strcpy(output_message, ERROR_BASE_STRING);
 	strcat(output_message, file_name);
 	
 	switch(error_type)
 	{
+		case ERROR_STRING_DECLARATION_NOT_OPENING_WITH_QUOTES:
+			strcat(output_message, ": incorrect string format for .string declaration, no quotes opening the string in line ");
+			break;
+		case ERROR_STRING_DECLARATION_CHARACTERS_AFTER_END_OF_QUOTES:
+			strcat(output_message, ": incorrect string format for .string declaration, characters following the string in line ");
+			break;
+		case ERROR_MISSING_QUOTES_END:
+			strcat(output_message, ": incorrect string format for .string declaration, missing quotes' end for string in line");
+			break;
 		case ERROR_COMMAND_UNKNOWN:
 			/* add command to be logged? */
 			strcat(output_message, ": unknown command used in line ");
@@ -101,14 +110,20 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 		case ERROR_EXCEEDED_LABEL_ARRAY_LIMIT:
 			strcat(output_message, ": Exceeded memory allocation limit, too many labels defined\n");
 			break;
+		case ERROR_EXCEEDED_WORD_ARRAY_LIMIT:
+			strcat(output_message, ": Exceeded memory allocation limit, too many words defined\n");
+			break;
 		default:
-			strcat(output_message, ": unknown error in line ");
+			strcat(output_message, ": unknown error code (");
+			itoa_base10(error_type, num_str);
+			strcat(output_message, num_str);
+			strcat(output_message, ") in line ");
 			break;
 	}
 	if (line_number)
 	{
-		itoa_base10(line_number, line_in_str);
-		strcat(output_message, line_in_str);
+		itoa_base10(line_number, num_str);
+		strcat(output_message, num_str);
 		strcat(output_message, ":\n\t\t");
 		strcat(output_message, line);
 	}

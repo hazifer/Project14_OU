@@ -16,7 +16,7 @@ char * skip_blanks(char *line);
 /* read_word: reads a single word from line and saves it into word, delimited by blanks 
  * returns length of word read */
 int read_word(char *line, char *word);
-/* read_word_delimited: reads a single word from line and saves it into word, delimited by blanks and the given delimiters array of chars
+/* read_word_delimited: reads a single word from line and saves it into word, delimited by the given delimiters array of chars
  * returns length of word read */
 int read_word_delimited(char *line, char *word, char *delimiters);
 

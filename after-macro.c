@@ -17,11 +17,13 @@ int begin_assembler(char *fname, char *after_label_fname, Word **word_array, Lab
 
 int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **label_array)
 {
-	char line[MAX_CHARS_IN_LINE], *line_ptr;
+	char line[MAX_CHARS_IN_LINE], *line_ptr, is_label_in_line;
 	int line_number, instruction_address, error_return, label_index;
-	line_number = instruction_address = 0;
+	line_number = 0;
+	instruction_address = BASE_IC_ADDRESS;
 	while (fgets(line, MAX_CHARS_IN_LINE, fp))
 	{
+		is_label_in_line = error_return = 0;
 		line_ptr = line;
 		++line_number;
 		if ((line_ptr = strchr(line, ':')))
@@ -38,21 +40,27 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 			}
 			++line_ptr;
 			line_ptr = skip_blanks(line_ptr);
+			is_label_in_line = 1;
 		}
 		/* easier to assume (and rightly so) that no label is in existence from here on and just save words and their types */
 		if (!line_ptr)
 			line_ptr = skip_blanks(line);
 		/* should save word after word, incrementing instruction_address each time */
-		after_macro_save_words(line_ptr, instruction_address, &error_return, word_array);
-		if (error_return == ERROR_EXCEEDED_WORD_ARRAY_LIMIT || error_return == ERROR_PROGRAM_MEMORY_ALLOCATION)
-		{	/* program runtime critical error */
-			print_error(fname, line, error_return, line_number);
-			return 1;
-		}
+		instruction_address = after_macro_save_words(line_ptr, instruction_address, &error_return, word_array);
 		if (error_return)
-		{	/* source file code error */
-			print_error(fname, line, error_return, line_number);
+		{
+			if (error_return == ERROR_EXCEEDED_WORD_ARRAY_LIMIT || error_return == ERROR_PROGRAM_MEMORY_ALLOCATION)
+			{	/* program runtime critical error */
+				print_error(fname, line, error_return, line_number);
+				return 1;
+			}
+			if (error_return != BLANK_LINE)
+				print_error(fname, line, error_return, line_number);
+			if (error_return == BLANK_LINE && !is_label_in_line)
+				continue;
 		}
+		/* if line was blank without a label, there is no need to increment */
+		++instruction_address;
 		/* after_macro_handle_data_type(line, line_ptr, line_number, instruction_address, label_array, &error_return, &label_index); */
 	}
 	return 0;
@@ -87,7 +95,8 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
 	read_word(colon_ptr + 1, word);
 	if (strcmp(word, ".extern"))
 	{
-		return_value = save_label(line, colon_ptr, label_array, line_number, instruction_address, stored_label_index);
+		/* save as EXTERNAL */
+		return_value = save_label(line, colon_ptr, label_array, instruction_address, stored_label_index);
 		if (return_value)
 		{
 			*error_return = return_value;
@@ -98,51 +107,92 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
 	*error_return = 0;
 }
 
-void after_macro_save_words(char *line, int instruction_address, int *error_return, Word **word_array)
+int after_macro_save_words(char *line, int instruction_address, int *error_return, Word **word_array)
 {
 	/* assume non blank at *line */
-	char command_code, *command_end_ptr, is_command;
+	char command_code, *command_end_ptr;
 	int return_value;
+	*error_return = 0;
 	command_end_ptr = line;
 	return_value = after_macro_verify_command_till_arguments(&command_end_ptr, &command_code);
-	if (return_value || command_code == BLANK_LINE) {
+	if (return_value) {
 		*error_return = return_value;
-		return;
+		return instruction_address;
+	}
+	if (command_code == BLANK_LINE)
+	{
+		*error_return = BLANK_LINE;
+		return instruction_address;
 	}
 	/* line command_end_ptr now points to the first blank after the command */
 	command_end_ptr = skip_blanks(command_end_ptr);
-	if ((is_command = (command_code >= 0 && command_code <= 15)))
+	if ((command_code >= 0 && command_code <= 15)) /* instruction type command */
 	{
 		/* save command word */
-		return_value = save_word(instruction_address++, (int)command_code, is_command, word_array);
+		return_value = save_word(instruction_address++, (int)command_code, 1, word_array);
 		if (return_value) {
 			*error_return = return_value;
-			return;
+			return instruction_address;
 		}
 		/* save argument words */
-		return_value = after_macro_save_command_arguments(command_end_ptr, instruction_address, command_code, word_array);
-		if (return_value) {
-			*error_return = return_value;
-			return;
-		}
+		instruction_address += after_macro_save_command_arguments(command_end_ptr, instruction_address, command_code, word_array, error_return);
 	}
-	else {
-/*		command_invalid = after_macro_save_declaration_words(line, instruction_address, ? );*/
-	}
-	if (return_value) 
+	else /* declaration type command (".data" ".string" etc) */
+		instruction_address += after_macro_save_declaration_words(command_end_ptr, instruction_address, command_code, word_array, error_return);
+	return instruction_address;
+}
+
+int after_macro_save_declaration_words(char *line, int instruction_address, char opcode, Word **word_array, int *error_return)
+{
+	/* assume the first character is a non blank */
+	if (opcode == TYPE_STRING)
+		return read_string_declaration_data(line, instruction_address, word_array, error_return);
+	if (opcode == TYPE_DATA)
+		return read_data_declaration_data(line, instruction_address, word_array, error_return);
+	return 0;
+}
+
+int read_data_declaration_data(char *line, int instruction_address, Word **word_array, int *error_return)
+{
+	return 0;
+}
+
+int read_string_declaration_data(char *line, int instruction_address, Word **word_array, int *error_return)
+{
+	int char_count = 0;
+	if (*line != '"')
 	{
-		*error_return = return_value;
-		return;
+		*error_return = ERROR_STRING_DECLARATION_NOT_OPENING_WITH_QUOTES;
+		return 0;
 	}
-	/*save_command_word(command_code, op_build, word_array);*/
-	*error_return = 0;
+	++line;
+	while (*line)
+	{
+		if (*line == '"') /* quotes without escape prior to them signify the end of the string */
+			break;
+		if (*line == '\\')
+			++line;
+		*error_return = save_word(instruction_address++, *line, 0, word_array);
+		if (*error_return)
+			return instruction_address;
+		++line, ++char_count;
+	}
+	if (*line != '"') /* broke out of while before quotes closing */
+		*error_return = ERROR_MISSING_QUOTES_END;
+	++line;
+	line = skip_blanks(line);
+	if (*line != '\n')
+		*error_return = ERROR_STRING_DECLARATION_CHARACTERS_AFTER_END_OF_QUOTES;
+	if (!(*error_return))
+		*error_return = save_word(instruction_address++, '\0', 0, word_array);
+	return char_count;
 }
 
 int after_macro_verify_command_till_arguments(char **line, char *command_code)
 {
 	/* assume the first character is non blank */
 	char word[MAX_WORD_LENGTH];
-	int word_len = read_word_delimited(*line, word, ",");
+	int word_len = read_word_delimited(*line, word, " \t,");
 	if (!word_len)
 	{
 		if (**line == ',')
@@ -172,36 +222,49 @@ int after_macro_verify_command_till_arguments(char **line, char *command_code)
 	return 0;
 }
 
-int after_macro_save_command_arguments(char *line, int instruction_address, char opcode, Word **word_array)
+int after_macro_save_command_arguments(char *line, int instruction_address, char opcode, Word **word_array, int *error_return)
 {
 	/* assume line points to a non ',' character */
 	/* assume opcode is between in [0,15] */
-	char word[MAX_WORD_LENGTH], number_of_arguments_for_command;
+	char word[MAX_WORD_LENGTH];
 	int word_len;
+	*error_return = 0;
 	if (opcode <= 4)
 	{
 		/* expect 2 arguments for commands with such opcode */
-		if (*line == '\n')
-			return ERROR_MISSING_ARGUMENTS;
-		word_len = read_word_delimited(line, word, ","); /* must be greater than one length due to assumption */
+		if (*line == '\n') {
+			*error_return = ERROR_MISSING_ARGUMENTS;
+			return 2;
+		}
+		word_len = read_word_delimited(line, word, " \t,"); /* must be greater than one length due to assumption */
 		save_word(instruction_address++, 0, 0, word_array);
 		line += word_len;
 		line = skip_blanks(line);
 		if (*line != ',')
-			return ERROR_BLANK_BETWEEN_ARGUMENTS;
+		{
+			*error_return = ERROR_BLANK_BETWEEN_ARGUMENTS;
+			return 2;
+		}
 		++line;
 		line = skip_blanks(line);
-		word_len = read_word_delimited(line, word, ",");
+		word_len = read_word_delimited(line, word, " \t,");
 		if (!word_len)
-			return ERROR_CONSEQUTIVE_COMMAS;
+		{
+			*error_return = ERROR_CONSEQUTIVE_COMMAS;
+			return 2;
+		}
 		save_word(instruction_address, 0, 0, word_array);
 		line += word_len;
 		line = skip_blanks(line);
 		if (*line == ',' && *line != '\n')
 		{
-			if (read_word_delimited(line, word, ","))
+			if (read_word_delimited(line, word, " \t,"))
+			{
 				return ERROR_TOO_MANY_ARGUMENTS;
-			return ERROR_COMMA_AFTER_ARGUMENTS;
+				return 2;
+			}
+			*error_return = ERROR_COMMA_AFTER_ARGUMENTS;
+			return 2;
 		}
 		return 2;
 	}
@@ -210,21 +273,23 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 		/* expect 1 arguments for commands with such opcode */
 		if (*line == '\n')
 			return ERROR_MISSING_ARGUMENTS;
-		word_len = read_word_delimited(line, word, ","); /* must be greater than one length due to assumption */
+		word_len = read_word_delimited(line, word, " \t,"); /* must be greater than one length due to assumption */
 		save_word(instruction_address++, 0, 0, word_array);
 		line += word_len;
 		line = skip_blanks(line);
 		if (*line == ',')
-			return ERROR_COMMA_AFTER_ARGUMENTS;
-		if (read_word_delimited(line, word, ","))
-			return ERROR_BLANK_BETWEEN_ARGUMENTS;
+		{
+			*error_return = ERROR_COMMA_AFTER_ARGUMENTS;
+			return 1;
+		}
+		if (read_word_delimited(line, word, " \t,"))
+			*error_return = ERROR_BLANK_BETWEEN_ARGUMENTS;
 		return 1;
 	}
-	/* expect 0 arguments */
-	if (*line == '\n')
-		return 0;
-	/* due to assumption there is a word to be read */
-	return ERROR_TOO_MANY_ARGUMENTS;
+	/* expect 0 arguments due to assumption there is a word to be read */
+	if (*line != '\n')
+		*error_return = ERROR_TOO_MANY_ARGUMENTS;
+	return 0;
 }
 
 int verify_label_syntax(char *line, char *end)
@@ -272,7 +337,7 @@ int verify_label_unique(char *line, char *end, Label **label_array)
 	return 0;
 }
 
-int save_label(char *line, char *end, Label **label_array, int line_number, int instruction_address, int *stored_label_index)
+int save_label(char *line, char *end, Label **label_array, int instruction_address, int *stored_label_index)
 {
 	static int next_label_array_index;
 	char word[MAX_WORD_LENGTH];
@@ -287,7 +352,7 @@ int save_label(char *line, char *end, Label **label_array, int line_number, int 
 	read_word(line, word);
 	*end = ':';
 	strcpy((*label_array)[next_label_array_index].name, word);
-	(*label_array)[next_label_array_index].decimal_instruction_address = instruction_address + line_number;
+	(*label_array)[next_label_array_index].decimal_instruction_address = instruction_address;
 	*stored_label_index = next_label_array_index;
 	tmp = increment_label_array_index(*label_array, ++next_label_array_index, &error_return);
 	if (tmp)
@@ -407,7 +472,7 @@ Label * init_label_array_memory()
 void reset_label_array_indices()
 {
 	allocate_label_array_memory(NULL, NULL);
-	save_label(NULL, NULL, NULL, 0, 0, NULL);
+	save_label(NULL, NULL, NULL, 0, NULL);
 	return;
 }
 
@@ -470,7 +535,26 @@ void print_labels(Label *label_array)
 {
 	int i = 0;
 	while (label_array[i].decimal_instruction_address)
-		printf("%s\n", label_array[i++].name);
+	{
+		printf(	"%s %d\n", 
+			label_array[i].name, 
+			label_array[i].decimal_instruction_address
+		);
+		++i;
+	}
+}
+
+void print_words(Word *word_array)
+{
+	int i = 0;
+	while (word_array[i].decimal_instruction_address)
+	{
+		printf(	"%d %d\n", 
+			word_array[i].decimal_instruction_address, 
+			word_array[i].Data.value
+		);
+		++i;
+	}
 }
 
 char save_label_data_type(Label *label_array, int label_index, char *word)

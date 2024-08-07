@@ -41,9 +41,24 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
 /* after_macro_save_words: saves words, their addresses and their values into the Word struct array
  * this is done starting a line, and the call ends with that line
  * after_macro_save_words saves the first syntax error from a line into int *error_return for the callee's use */
-void after_macro_save_words(char *line, int instructions_address, int *error_return, Word **word_array);
+int after_macro_save_words(char *line, int instructions_address, int *error_return, Word **word_array);
 int after_macro_verify_command_till_arguments(char **line, char *command_code);
-int after_macro_save_command_arguments(char *line, int instruction_address, char opcode, Word **word_array);
+int after_macro_save_command_arguments(char *line, int instruction_address, char opcode, Word **word_array, int *error_return);
+int after_macro_save_declaration_words(char *line, int instruction_address, char opcode, Word **word_array, int *error_return);
+
+/* read_string_declaration_data: assumes line points to a non blank character
+ * reads a string and stores each character from it into word_array (with its address and ascii value)
+ * returns number of characters read
+ * sets errors in reading into error_return 
+ * string should be in the format of "....", with no preceding or receding characters
+ * the '"' is escaped into the string by \" */
+int read_string_declaration_data(char *line, int instruction_address, Word **word_array, int *error_return);
+
+/* read_data_declaration_data: assumes line points to a non blank character
+ * reads a series of integers seperated by colons from a line, and stores each integer into word_array (with its address and integer value)
+ * returns number of integers read
+ * sets errors in reading into error_return */
+int read_data_declaration_data(char *line, int instruction_address, Word **word_array, int *error_return);
 
 /* save_label: saves a label's name and decimal instruction address (using ic given) from a given line
  * returns 0 on success, storing the added label's index in label_array into stored_index
@@ -51,7 +66,7 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
  * ERROR_EXCEEDED_LABEL_ARRAY_LIMIT
  * ERROR_PROGRAM_MEMORY_ALLOCATION
  */
-int save_label(char *line, char *end, Label **label_array, int line_number, int instruction_address, int *stored_label_index);
+int save_label(char *line, char *end, Label **label_array, int instruction_address, int *stored_label_index);
 
 int save_word(int instruction_address, int value, char is_command, Word **word_array);
 
@@ -91,5 +106,6 @@ Word * increment_word_array_index(Word *word_array, int next_word_index, int *er
 void reset_word_array_indices();
 
 void print_labels(Label *label_array);
+void print_words(Word *word_array);
 
 #endif /* AFTERMACRO_H */
