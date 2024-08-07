@@ -1,6 +1,6 @@
 #include "after-macro.h"
 
-int begin_assembler(char *fname, char *after_label_fname, Word **word_array, Label **label_array, User_Output **out)
+int begin_assembler(char *fname, char *after_label_fname, Word **word_array, Label **label_array)
 {
 	int return_value;
 	FILE *fp = fopen(after_label_fname, "r");
@@ -8,14 +8,14 @@ int begin_assembler(char *fname, char *after_label_fname, Word **word_array, Lab
 	{
 		return 1;
 	}
-	return_value = first_after_macro_scan(fp, after_label_fname, word_array, label_array, out);
+	return_value = first_after_macro_scan(fp, after_label_fname, word_array, label_array);
 	fclose(fp);
 	if (return_value)
 		return 1;
 	return 0;
 }
 
-int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **label_array, User_Output **out)
+int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **label_array)
 {
 	char line[MAX_CHARS_IN_LINE], *line_ptr;
 	int line_number, instruction_address, error_return, label_index;
@@ -29,16 +29,12 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 			after_macro_handle_label(line, line_ptr, line_number, instruction_address, label_array, &error_return, &label_index);
 			if (error_return == ERROR_EXCEEDED_LABEL_ARRAY_LIMIT || error_return == ERROR_PROGRAM_MEMORY_ALLOCATION)
 			{	/* program runtime critical error */
-				log_error(out, fname, line, error_return, line_number, &error_return);
-				if (error_return)
-						return ERROR_OUTPUT_MEMORY_ALLOCATION;
+				print_error(fname, line, error_return, line_number);
 				return 1;
 			}
 			if (error_return)
 			{	/* source file code error */
-				log_error(out, fname, line, error_return, line_number, &error_return);
-				if (error_return)
-						return ERROR_OUTPUT_MEMORY_ALLOCATION;
+				print_error(fname, line, error_return, line_number);
 			}
 			++line_ptr;
 			line_ptr = skip_blanks(line_ptr);
@@ -50,16 +46,12 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 		after_macro_save_words(line_ptr, instruction_address, &error_return, word_array);
 		if (error_return == ERROR_EXCEEDED_WORD_ARRAY_LIMIT || error_return == ERROR_PROGRAM_MEMORY_ALLOCATION)
 		{	/* program runtime critical error */
-			log_error(out, fname, line, error_return, line_number, &error_return);
-			if (error_return)
-					return ERROR_OUTPUT_MEMORY_ALLOCATION;
+			print_error(fname, line, error_return, line_number);
 			return 1;
 		}
 		if (error_return)
 		{	/* source file code error */
-			log_error(out, fname, line, error_return, line_number, &error_return);
-			if (error_return)
-					return ERROR_OUTPUT_MEMORY_ALLOCATION;
+			print_error(fname, line, error_return, line_number);
 		}
 		/* after_macro_handle_data_type(line, line_ptr, line_number, instruction_address, label_array, &error_return, &label_index); */
 	}

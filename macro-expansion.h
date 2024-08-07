@@ -12,15 +12,15 @@ typedef struct Macro {
 
 /* handle_filename_extension: adds the extension for the file name if needed
  * returns pointer to the file name with the extension added to it */
-char * handle_filename_extension(char *sfname, char *dfname, User_Output **out, int *error_return);
+char * handle_filename_extension(char *sfname, char *dfname, int *error_return);
 
 /* expand_macros: expands the source file's macros into a similarly named file with an extension ".am"
  * saves the .am file created into dfname_holder for the callee's use
  * returns 0 on success
  * returns 1 on failure
  * sets the relevant message to the user (according to case) using the struct User_Output, overriding old 'type' 'line' and 'message' fields */
-int expand_macros(char *sfname, char *dfname_holder, User_Output **out, int *error_return);
-int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, User_Output **out, Macro **macro_array, int *error_return);
+int expand_macros(char *sfname, char *dfname_holder, int *error_return);
+int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, Macro **macro_array, int *error_return);
 
 /* expand_macros_print_label: writes a label from a given line into the output file
  * returns a pointer to the first ':' from a label in the given line
@@ -40,7 +40,7 @@ char * expand_macros_handle_label(char *line, FILE *fpout);
  * returns STATE_CHANGE_READ_MACRO_CONTENT when a correct format macro declaration was found (after uniqueness + syntax check)
  * returns 0 when the line was printed, or a macro was expanded (non of the previous cases occurred) */
 int expand_macros_handle_command_state(char *line, FILE *fpout, Macro *macro_array, int next_macro_index);
-int expand_macros_handle_collect_macro_content_state(char *line, User_Output **out, Macro *macro_array, int next_macro_index);
+int expand_macros_handle_collect_macro_content_state(char *line, Macro *macro_array, int next_macro_index);
 
 /* verify_till_macr_word: reads line and returns a pointer to the first occurrence of "macr " or "macr\t" in line if exists 
  * returns NULL and raises an error of type ERROR_WORD_FOUND_PRE_MACRO_KEYWORD into out in case there a words prior to "macr " or "macr\t"

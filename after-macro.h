@@ -28,9 +28,9 @@ typedef struct Word {
 	} Data;
 } Word;
 
-int begin_assembler(char *fname, char *after_macro_fname, Word **word_array, Label **labels, User_Output **out);
+int begin_assembler(char *fname, char *after_macro_fname, Word **word_array, Label **labels);
 
-int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **labels, User_Output **out);
+int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **labels);
 
 /* after_macro_handle_label: responsible for label portion handling after the macro expansion.
  * calls for verify_label_syntax(), verify_label_unique(), and save_label()
