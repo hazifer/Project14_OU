@@ -121,11 +121,13 @@ void after_macro_save_words(char *line, int instruction_address, int *error_retu
 	command_end_ptr = skip_blanks(command_end_ptr);
 	if ((is_command = (command_code >= 0 && command_code <= 15)))
 	{
+		/* save command word */
 		return_value = save_word(instruction_address++, (int)command_code, is_command, word_array);
 		if (return_value) {
 			*error_return = return_value;
 			return;
 		}
+		/* save argument words */
 		return_value = after_macro_save_command_arguments(command_end_ptr, instruction_address, command_code, word_array);
 		if (return_value) {
 			*error_return = return_value;
@@ -187,6 +189,8 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 	if (opcode <= 4)
 	{
 		/* expect 2 arguments for commands with such opcode */
+		if (*line == '\n')
+			return ERROR_MISSING_ARGUMENTS;
 		word_len = read_word_delimited(line, word, ","); /* must be greater than one length due to assumption */
 		save_word(instruction_address++, 0, 0, word_array);
 		line += word_len;
@@ -212,6 +216,8 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 	else if (opcode <= 13)
 	{
 		/* expect 1 arguments for commands with such opcode */
+		if (*line == '\n')
+			return ERROR_MISSING_ARGUMENTS;
 		word_len = read_word_delimited(line, word, ","); /* must be greater than one length due to assumption */
 		save_word(instruction_address++, 0, 0, word_array);
 		line += word_len;
@@ -222,7 +228,10 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 			return ERROR_BLANK_BETWEEN_ARGUMENTS;
 		return 1;
 	}
-	/* expect 0 arguments, due to assumption we already have an issue in syntax */
+	/* expect 0 arguments */
+	if (*line == '\n')
+		return 0;
+	/* due to assumption there is a word to be read */
 	return ERROR_TOO_MANY_ARGUMENTS;
 }
 

@@ -15,14 +15,29 @@ void log_error(User_Output **out, char *file_name, char *line, int error_type, i
 	(*out)[error_index].message_type = error_type;
 	strcpy((*out)[error_index].message, ERROR_BASE_STRING);
 	strcat((*out)[error_index].message, file_name);
+	
+	
+	
 	switch(error_type)
 	{
 		case ERROR_COMMAND_UNKNOWN:
 			/* add command to be logged? */
 			strcat((*out)[error_index].message, ": unknown command used in line ");
 			break;
+		case ERROR_MISSING_ARGUMENTS:
+			strcat((*out)[error_index].message, ": missing arguments for command in line ");
+			break;
 		case ERROR_LABEL_RESERVED_WORD:
 			strcat((*out)[error_index].message, ": reserved language word used as label in line ");
+			break;
+		case ERROR_TOO_MANY_ARGUMENTS:
+			strcat((*out)[error_index].message, ": too many arguments for command in line ");
+			break;
+		case ERROR_BLANK_BETWEEN_ARGUMENTS:
+			strcat((*out)[error_index].message, ": blanks seperating arguments in line ");
+			break;
+		case ERROR_COMMA_AFTER_ARGUMENTS:
+			strcat((*out)[error_index].message, ": comma detected at end of line in line ");
 			break;
 		case ERROR_COMMA_BEFORE_COMMAND:
 			strcat((*out)[error_index].message, ": invalid command syntax, comma detected before command in line ");
