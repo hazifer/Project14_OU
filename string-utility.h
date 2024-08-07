@@ -13,9 +13,11 @@ void reverse_str(char *str);
  * returns a pointer to the first non blank in line (\n and \0 aren't considered blanks) */
 char * skip_blanks(char *line);
 
-/* read_word: reads a single word from line and saves it into word 
+/* read_word: reads a single word from line and saves it into word, delimited by blanks 
  * returns length of word read */
 int read_word(char *line, char *word);
+/* read_word_delimited: reads a single word from line and saves it into word, delimited by blanks and the given delimiters array of chars
+ * returns length of word read */
 int read_word_delimited(char *line, char *word, char *delimiters);
 
 /* add_tabs_after_newline: adds a tab character '\t' after every '\n' in a given content */
