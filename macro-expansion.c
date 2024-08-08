@@ -133,7 +133,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		if (state == STATE_COMMAND)
 		{
 			return_value = expand_macros_handle_command_state(li, fpout, *macro_array, next_macro_index);
-			if (label_flag && is_newline_needed(return_value))
+			if (label_flag && return_value && is_newline_needed(return_value))
 				fputc('\n', fpout);
 			if (!return_value || return_value == MACRO_EXPANDED)
 			{

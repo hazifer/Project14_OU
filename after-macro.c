@@ -154,7 +154,65 @@ int after_macro_save_declaration_words(char *line, int instruction_address, char
 
 int read_data_declaration_data(char *line, int instruction_address, Word **word_array, int *error_return)
 {
-	return 0;
+	/* assume first character is not blank */
+	int integer_count, num, sign;
+	integer_count = 0;
+	if (!isdigit(*line) && *line != '-' && *line != '+')
+	{
+		if (*line == ',')
+			*error_return = ERROR_COMMA_BEFORE_INTEGERS;
+		else if (*line != '\n')
+			*error_return = ERROR_NOT_AN_INTEGER;
+		else
+			*error_return = ERROR_EMPTY_INTEGER_LIST;
+		return integer_count;
+	}
+	while (*line)
+	{
+		num = 0;
+		sign = *line == '-' ? -1 : 1;
+		if (*line == '-' || *line == '+')
+			++line;
+		if (!isdigit(*line))
+		{
+			if (*line == ',')
+				*error_return = ERROR_MULTIPLE_COMMAS_IN_INTEGER_LIST;
+			else if (*line == '\n')
+				*error_return = ERROR_INTERGER_LIST_ENDING_WITH_COMMA;
+			else
+				*error_return = ERROR_NOT_AN_INTEGER;
+			break;
+		}
+		while (isdigit(*line))
+		{
+			num = num * 10 + (*line -'0');
+			++line;
+		}
+		*error_return = save_word(instruction_address++, num * sign, 0, word_array);
+		if (*error_return)
+			break;
+		++integer_count;
+		/* done reading and saving num into a word, validate syntax before next read */
+		line = skip_blanks(line);
+		if (*line == '\n')
+			break;
+		if (*line == ',')
+		{
+			++line;
+			line = skip_blanks(line);
+			continue;
+		}
+		/* '\n' and ',' are the only accepted digits after reading an integer AND skipping blanks
+		 * if we are here, there is an issue with the input */
+		if (isdigit(*line))
+		{
+			*error_return = ERROR_BLANKS_BETWEEN_INTEGERS;
+			break;
+		}
+		*error_return = ERROR_NOT_AN_INTEGER;
+		break;
+	}
+	return integer_count;
 }
 
 int read_string_declaration_data(char *line, int instruction_address, Word **word_array, int *error_return)

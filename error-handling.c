@@ -8,7 +8,25 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 	strcat(output_message, file_name);
 	
 	switch(error_type)
-	{
+	{	
+		case ERROR_INTERGER_LIST_ENDING_WITH_COMMA:
+			strcat(output_message, ": integer list ending with a comma in .data declaration in line ");
+			break;
+		case ERROR_COMMA_BEFORE_INTEGERS:
+			strcat(output_message, ": comma before integers in .data declaration in line ");
+			break;
+		case ERROR_MULTIPLE_COMMAS_IN_INTEGER_LIST:
+			strcat(output_message, ": consequtive commas in .data declaration in line ");
+			break;
+		case ERROR_BLANKS_BETWEEN_INTEGERS:
+			strcat(output_message, ": blanks between integers in .data declaration in line ");
+			break;
+		case ERROR_NOT_AN_INTEGER:
+			strcat(output_message, ": atleast one of the inputs is not an integer in .data declaration in line ");
+			break;
+		case ERROR_EMPTY_INTEGER_LIST:
+			strcat(output_message, ": empty integer list in .data declaration in line ");
+			break;
 		case ERROR_STRING_DECLARATION_NOT_OPENING_WITH_QUOTES:
 			strcat(output_message, ": incorrect string format for .string declaration, no quotes opening the string in line ");
 			break;
