@@ -46,7 +46,7 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 		if (!line_ptr)
 			line_ptr = skip_blanks(line);
 		/* should save word after word, incrementing instruction_address each time */
-		instruction_address = after_macro_save_words(line_ptr, instruction_address, &error_return, word_array);
+		instruction_address = after_macro_save_words(line_ptr, instruction_address, &error_return, word_array, label_array);
 		if (error_return)
 		{
 			if (error_return == ERROR_EXCEEDED_WORD_ARRAY_LIMIT || error_return == ERROR_PROGRAM_MEMORY_ALLOCATION)
@@ -91,28 +91,22 @@ void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int 
 		*error_return = ERROR_LABEL_RESERVED_WORD;
 		return;
 	}
-	/* handle case of "LABEL: .extern" lines, in which we ignore the label */
+	/* WHAT ABOUT "LABEL: .extern" or ".entry" lines? DOES LABEL CAUSE AN INSTRUCTION ADDRESS INCREMENT? */
 	read_word(colon_ptr + 1, word);
-	if (strcmp(word, ".extern"))
+	return_value = save_label(line, colon_ptr, label_array, instruction_address, stored_label_index);
+	if (return_value)
 	{
-		/* save as EXTERNAL */
-		return_value = save_label(line, colon_ptr, label_array, instruction_address, stored_label_index);
-		if (return_value)
-		{
-			*error_return = return_value;
-			return;
-		}
-		save_label_data_type(*label_array, *stored_label_index, word);
+		*error_return = return_value;
+		return;
 	}
 	*error_return = 0;
 }
 
-int after_macro_save_words(char *line, int instruction_address, int *error_return, Word **word_array)
+int after_macro_save_words(char *line, int instruction_address, int *error_return, Word **word_array, Label **label_array)
 {
 	/* assume non blank at *line */
 	char command_code, *command_end_ptr;
 	int return_value;
-	*error_return = 0;
 	command_end_ptr = line;
 	return_value = after_macro_verify_command_till_arguments(&command_end_ptr, &command_code);
 	if (return_value) {
@@ -138,17 +132,66 @@ int after_macro_save_words(char *line, int instruction_address, int *error_retur
 		instruction_address += after_macro_save_command_arguments(command_end_ptr, instruction_address, command_code, word_array, error_return);
 	}
 	else /* declaration type command (".data" ".string" etc) */
-		instruction_address += after_macro_save_declaration_words(command_end_ptr, instruction_address, command_code, word_array, error_return);
+		instruction_address += after_macro_save_declaration_words(command_end_ptr, instruction_address, command_code, word_array, label_array, error_return);
 	return instruction_address;
 }
 
-int after_macro_save_declaration_words(char *line, int instruction_address, char opcode, Word **word_array, int *error_return)
+int after_macro_save_declaration_words(char *line, int instruction_address, char opcode, Word **word_array, Label **label_array, int *error_return)
 {
 	/* assume the first character is a non blank */
 	if (opcode == TYPE_STRING)
 		return read_string_declaration_data(line, instruction_address, word_array, error_return);
 	if (opcode == TYPE_DATA)
 		return read_data_declaration_data(line, instruction_address, word_array, error_return);
+	if (opcode == TYPE_ENTRY)
+		return read_entry_declaration_data(line, instruction_address, label_array, error_return);
+	if (opcode == TYPE_EXTERN)
+		return read_extern_declaration_data(line, instruction_address, label_array, error_return);
+	return 0;
+}
+
+/*int verify_label_unique(char *line, char *end, Label **label_array)*/
+int read_extern_declaration_data(char *line, int instruction_address, Label **label_array, int *error_return)
+{
+	/* assume first character is not blank */
+	char word[MAX_WORD_LENGTH], *word_ptr;
+	int label_index, len;
+	*error_return = 0;
+	len = read_word(line, word);
+	if (!len)
+	{
+		*error_return = ERROR_EXTERN_EMPTY_LABEL;
+		return 0;
+	}
+	if (!isalpha(word[0]))
+	{
+		*error_return = ERROR_EXTERN_ILLEGAL_LABEL_NOT_BEGIN_WITH_ALPHA;
+		return 0;
+	}
+	word_ptr = word;
+	while (*word_ptr && ((isalpha(*word_ptr) || isdigit(*word_ptr))))
+		++word_ptr;
+	word_ptr = skip_blanks(word_ptr);
+	if (*word_ptr != '\n')
+	{
+		if (!isalpha(*word_ptr) && !isdigit(*word_ptr))
+			*error_return = ERROR_EXTERN_ILLEGAL_LABEL_NAME;
+		else
+			*error_return = ERROR_EXTERN_BLANKS_IN_NAME;
+		return 0;
+	}
+	if ((label_index = is_word_label(word, label_array)) == -1)
+	{
+		*error_return = ERROR_EXTERN_LABEL_NOT_DECLARED;
+		return 0;
+	}
+	(*label_array)[label_index].label_type = TYPE_ENTRY;
+	return 0;
+}
+
+int read_entry_declaration_data(char *line, int instruction_address, Label **label_array, int *error_return)
+{
+	char word[MAX_WORD_LENGTH];
 	return 0;
 }
 
@@ -157,16 +200,6 @@ int read_data_declaration_data(char *line, int instruction_address, Word **word_
 	/* assume first character is not blank */
 	int integer_count, num, sign;
 	integer_count = 0;
-	if (!isdigit(*line) && *line != '-' && *line != '+')
-	{
-		if (*line == ',')
-			*error_return = ERROR_COMMA_BEFORE_INTEGERS;
-		else if (*line != '\n')
-			*error_return = ERROR_NOT_AN_INTEGER;
-		else
-			*error_return = ERROR_EMPTY_INTEGER_LIST;
-		return integer_count;
-	}
 	while (*line)
 	{
 		num = 0;
@@ -217,6 +250,7 @@ int read_data_declaration_data(char *line, int instruction_address, Word **word_
 
 int read_string_declaration_data(char *line, int instruction_address, Word **word_array, int *error_return)
 {
+	/* assumes line points to non blank or ',' */
 	int char_count = 0;
 	if (*line != '"')
 	{
@@ -393,6 +427,17 @@ int verify_label_unique(char *line, char *end, Label **label_array)
 		if (!strcmp((*label_array)[i++].name, word))
 				return ERROR_LABEL_DUPLICATE;
 	return 0;
+}
+
+int is_word_label(char *word, Label **label_array)
+{
+	int i;
+	Label *labels_ptr = *label_array;
+	i = 0;
+	while (labels_ptr[i].decimal_instruction_address)
+		if (!strcmp(labels_ptr[i++].name, word))
+				return i;
+	return -1;
 }
 
 int save_label(char *line, char *end, Label **label_array, int instruction_address, int *stored_label_index)
@@ -613,13 +658,6 @@ void print_words(Word *word_array)
 		);
 		++i;
 	}
-}
-
-char save_label_data_type(Label *label_array, int label_index, char *word)
-{
-	char data_type = get_declaration_type(word);
-	(label_array)[label_index].label_type = data_type;
-	return data_type;
 }
 
 char get_declaration_type(char *word)

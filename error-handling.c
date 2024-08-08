@@ -9,6 +9,21 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 	
 	switch(error_type)
 	{	
+		case ERROR_EXTERN_EMPTY_LABEL:
+			strcat(output_message, ": empty label as input in .extern declaration in line ");
+			break;
+		case ERROR_EXTERN_ILLEGAL_LABEL_NOT_BEGIN_WITH_ALPHA:
+			strcat(output_message, ": illegal label name as input (not beginning with alphabetic letter) in .extern declaration in line ");
+			break;
+		case ERROR_EXTERN_ILLEGAL_LABEL_NAME:
+			strcat(output_message, ": illegal label name as input (illegal character used) in .extern declaration in line ");
+			break;
+		case ERROR_EXTERN_BLANKS_IN_NAME:
+			strcat(output_message, ": illegal label name as input (blanks in name) in .extern declaration in line ");
+			break;
+		case ERROR_EXTERN_LABEL_NOT_DECLARED:
+			strcat(output_message, ": illegal label name as input (not declared in code) in .extern declaration in line ");
+			break;
 		case ERROR_INTERGER_LIST_ENDING_WITH_COMMA:
 			strcat(output_message, ": integer list ending with a comma in .data declaration in line ");
 			break;

@@ -47,7 +47,9 @@ int main(int argc, char *argv[])
 			free(words);
 			continue;
 		}
+		printf("labels:\n");
 		print_labels(labels);
+		printf("\nwords:\n");
 		print_words(words);
 		free(labels);
 		free(words);

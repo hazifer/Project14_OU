@@ -3,3 +3,5 @@
 		if exists, assuming lines started with non blank, check for a blank before that index - if exists, return an error
 -	is label data type needed?
 -	labels should conform to digit and alphabetic characters only
+-	.extern and .entry should be ignored as commands by instruction counter
+-	after_macro_handle_label should return something instead of just saving into error_return
