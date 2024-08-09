@@ -19,7 +19,22 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 	switch(error_type)
 	{	
 		case WARN_LABEL_IN_ENTRY_EXTERN_LINE:
-			strcat(output_message, ": characters detected after label in .extern declaration in line ");
+			strcat(output_message, ": label ignored in .extern or .entry declaration in line ");
+			break;
+		case ERROR_ENTRY_CHARACTERS_AFTER_LABEL:
+			strcat(output_message, ": characters detected after label in .entry declaration in line ");
+			break;
+		case ERROR_ENTRY_EMPTY_LABEL:
+			strcat(output_message, ": empty label as input in .entry declaration in line ");
+			break;
+		case ERROR_ENTRY_ILLEGAL_LABEL_NOT_BEGIN_WITH_ALPHA:
+			strcat(output_message, ": illegal label name as input (not beginning with alphabetic letter) in .entry declaration in line ");
+			break;
+		case ERROR_ENTRY_ILLEGAL_LABEL_NAME:
+			strcat(output_message, ": illegal label name as input (illegal character used) in .entry declaration in line ");
+			break;
+		case ERROR_ENTRY_LABEL_NOT_DECLARED:
+			strcat(output_message, ": illegal label name as input (not declared in code) in .entry declaration in line ");
 			break;
 		case ERROR_EXTERN_CHARACTERS_AFTER_LABEL:
 			strcat(output_message, ": characters detected after label in .extern declaration in line ");
@@ -30,14 +45,11 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 		case ERROR_EXTERN_ILLEGAL_LABEL_NOT_BEGIN_WITH_ALPHA:
 			strcat(output_message, ": illegal label name as input (not beginning with alphabetic letter) in .extern declaration in line ");
 			break;
-		/*case ERROR_EXTERN_BLANKS_IN_NAME:
-			strcat(output_message, ": illegal label name as input (blanks in name) in .extern declaration in line ");
-			break;*/
 		case ERROR_EXTERN_ILLEGAL_LABEL_NAME:
 			strcat(output_message, ": illegal label name as input (illegal character used) in .extern declaration in line ");
 			break;
-		case ERROR_EXTERN_LABEL_NOT_DECLARED:
-			strcat(output_message, ": illegal label name as input (not declared in code) in .extern declaration in line ");
+		case ERROR_EXTERN_LABEL_ALREADY_DECLARED:
+			strcat(output_message, ": illegal label name as input (already declared in code) in .extern declaration in line ");
 			break;
 		case ERROR_INTERGER_LIST_ENDING_WITH_COMMA:
 			strcat(output_message, ": integer list ending with a comma in .data declaration in line ");
@@ -153,10 +165,6 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 			break;
 		case ERROR_EXCEEDED_MACRO_ARRAY_LIMIT:
 			strcat(output_message, ": Exceeded memory allocation limit, too many macros defined\n");
-			break;
-		case ERROR_EXCEEDED_OUTPUT_ARRAY_LIMIT:
-			printf("shoudln't get here\n");
-			strcat(output_message, ": too many errors in code, code ignored after line ");
 			break;
 		case ERROR_EXCEEDED_LABEL_ARRAY_LIMIT:
 			strcat(output_message, ": Exceeded memory allocation limit, too many labels defined\n");

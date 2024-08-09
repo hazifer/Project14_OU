@@ -180,16 +180,50 @@ int read_extern_declaration_data(char *line, int instruction_address, Label **la
 	}	
 	if ((label_index = is_word_label(word, label_array)) == -1)
 	{
-		*error_return = ERROR_EXTERN_LABEL_NOT_DECLARED;
+		*error_return = ERROR_EXTERN_LABEL_ALREADY_DECLARED;
 		return 0;
 	}
-	(*label_array)[label_index].label_type = TYPE_ENTRY;
+	(*label_array)[label_index].label_type = TYPE_EXTERN;
 	return 0;
 }
 
 int read_entry_declaration_data(char *line, int instruction_address, Label **label_array, int *error_return)
 {
-	char word[MAX_WORD_LENGTH];
+	char word[MAX_WORD_LENGTH], *word_ptr;
+	int label_index, word_len;
+	*error_return = 0;
+	word_len = read_word(line, word);
+	if (!word_len)
+	{
+		*error_return = ERROR_ENTRY_EMPTY_LABEL;
+		return 0;
+	}
+	if (!isalpha(word[0]))
+	{
+		*error_return = ERROR_ENTRY_ILLEGAL_LABEL_NOT_BEGIN_WITH_ALPHA;
+		return 0;
+	}
+	word_ptr = word;
+	while (isalpha(*word_ptr) || isdigit(*word_ptr))
+		++word_ptr;
+	if (*word_ptr)
+	{
+		*error_return = ERROR_ENTRY_ILLEGAL_LABEL_NAME;
+		return 0;
+	}
+	line += word_len;
+	line = skip_blanks(line);
+	if (*line && *line != '\n')
+	{
+		*error_return = ERROR_ENTRY_CHARACTERS_AFTER_LABEL;
+		return 0;
+	}	
+	if ((label_index = is_word_label(word, label_array)) == -1)
+	{
+		*error_return = ERROR_ENTRY_LABEL_NOT_DECLARED;
+		return 0;
+	}
+	(*label_array)[label_index].label_type = TYPE_ENTRY;
 	return 0;
 }
 
@@ -650,9 +684,10 @@ void print_labels(Label *label_array)
 	int i = 0;
 	while (label_array[i].decimal_instruction_address)
 	{
-		printf(	"%s %d\n", 
+		printf(	"name: %s addr: %d type: %d\n", 
 			label_array[i].name, 
-			label_array[i].decimal_instruction_address
+			label_array[i].decimal_instruction_address,
+			label_array[i].label_type
 		);
 		++i;
 	}
