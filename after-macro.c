@@ -2,24 +2,25 @@
 
 int begin_assembler(char *fname, char *after_label_fname, Word **word_array, Label **label_array)
 {
-	int return_value;
+	int first_scan_return_value;
 	FILE *fp = fopen(after_label_fname, "r");
 	if (!fp)
 	{
 		return 1;
 	}
-	return_value = first_after_macro_scan(fp, after_label_fname, word_array, label_array);
+	first_scan_return_value = first_after_macro_scan(fp, after_label_fname, word_array, label_array);
 	fclose(fp);
-	if (return_value)
+	if (first_scan_return_value == ERROR_TERMINATE_ASSEMBLER)
 		return 1;
+	/* in case either scans fail, we don't create the output files */
 	return 0;
 }
 
 int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **label_array)
 {
-	char line[MAX_CHARS_IN_LINE], *line_ptr, is_label_in_line;
+	char line[MAX_CHARS_IN_LINE], *line_ptr, is_label_in_line, error_flag;
 	int line_number, instruction_address, error_return, label_index;
-	line_number = 0;
+	line_number = error_flag = 0;
 	instruction_address = BASE_IC_ADDRESS;
 	while (fgets(line, MAX_CHARS_IN_LINE, fp))
 	{
@@ -28,14 +29,17 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 		++line_number;
 		if ((line_ptr = strchr(line, ':')))
 		{
-			after_macro_handle_label(line, line_ptr, line_number, instruction_address, label_array, &error_return, &label_index);
+			error_return = after_macro_handle_label(line, line_ptr, instruction_address, label_array, &label_index);
 			if (error_return == ERROR_EXCEEDED_LABEL_ARRAY_LIMIT || error_return == ERROR_PROGRAM_MEMORY_ALLOCATION)
 			{	/* program runtime critical error */
 				print_error(fname, line, error_return, line_number);
-				return 1;
+				return ERROR_TERMINATE_ASSEMBLER;
 			}
+			else if (error_return == WARN_LABEL_IN_ENTRY_EXTERN_LINE)
+				--instruction_address;
 			if (error_return)
-			{	/* source file code error */
+			{
+				error_flag = 1;
 				print_error(fname, line, error_return, line_number);
 			}
 			++line_ptr;
@@ -52,10 +56,13 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 			if (error_return == ERROR_EXCEEDED_WORD_ARRAY_LIMIT || error_return == ERROR_PROGRAM_MEMORY_ALLOCATION)
 			{	/* program runtime critical error */
 				print_error(fname, line, error_return, line_number);
-				return 1;
+				return ERROR_TERMINATE_ASSEMBLER;
 			}
 			if (error_return != BLANK_LINE)
+			{
+				error_flag = 1;
 				print_error(fname, line, error_return, line_number);
+			}
 			if (error_return == BLANK_LINE && !is_label_in_line)
 				continue;
 		}
@@ -63,43 +70,33 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 		++instruction_address;
 		/* after_macro_handle_data_type(line, line_ptr, line_number, instruction_address, label_array, &error_return, &label_index); */
 	}
-	return 0;
+	return error_flag;
 }
 
-void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int instruction_address, Label **label_array, int *error_return, int *stored_label_index)
+int after_macro_handle_label(char *line, char *colon_ptr, int instruction_address, Label **label_array, int *stored_label_index)
 {
 	/* assumes colon_ptr points to ':' in label */
 	int return_value;
 	char word[MAX_WORD_LENGTH];
 	return_value = verify_label_syntax(line, colon_ptr);
 	if (return_value)
-	{
-		*error_return = return_value;
-		return;
-	}
+		return return_value;
 	return_value = verify_label_unique(line, colon_ptr, label_array);
 	if (return_value)
-	{
-		*error_return = return_value;
-		return;
-	}
+		return return_value;
 	*colon_ptr = '\0';
 	read_word(line, word);
 	*colon_ptr = ':';
 	if (!verify_not_reserved(word) || get_command_op_code_decimal(word) != -1)
-	{
-		*error_return = ERROR_LABEL_RESERVED_WORD;
-		return;
-	}
-	/* WHAT ABOUT "LABEL: .extern" or ".entry" lines? DOES LABEL CAUSE AN INSTRUCTION ADDRESS INCREMENT? */
+		return ERROR_LABEL_RESERVED_WORD;
+	/* ignore labels in .entry or .extern lines */
 	read_word(colon_ptr + 1, word);
+	if (!strcmp(word, ".extern") || !strcmp(word, ".entry"))
+		return WARN_LABEL_IN_ENTRY_EXTERN_LINE;
 	return_value = save_label(line, colon_ptr, label_array, instruction_address, stored_label_index);
 	if (return_value)
-	{
-		*error_return = return_value;
-		return;
-	}
-	*error_return = 0;
+		return return_value;
+	return 0;
 }
 
 int after_macro_save_words(char *line, int instruction_address, int *error_return, Word **word_array, Label **label_array)
@@ -118,8 +115,6 @@ int after_macro_save_words(char *line, int instruction_address, int *error_retur
 		*error_return = BLANK_LINE;
 		return instruction_address;
 	}
-	/* line command_end_ptr now points to the first blank after the command */
-	command_end_ptr = skip_blanks(command_end_ptr);
 	if ((command_code >= 0 && command_code <= 15)) /* instruction type command */
 	{
 		/* save command word */
@@ -155,10 +150,10 @@ int read_extern_declaration_data(char *line, int instruction_address, Label **la
 {
 	/* assume first character is not blank */
 	char word[MAX_WORD_LENGTH], *word_ptr;
-	int label_index, len;
+	int label_index, word_len;
 	*error_return = 0;
-	len = read_word(line, word);
-	if (!len)
+	word_len = read_word(line, word);
+	if (!word_len)
 	{
 		*error_return = ERROR_EXTERN_EMPTY_LABEL;
 		return 0;
@@ -169,17 +164,20 @@ int read_extern_declaration_data(char *line, int instruction_address, Label **la
 		return 0;
 	}
 	word_ptr = word;
-	while (*word_ptr && ((isalpha(*word_ptr) || isdigit(*word_ptr))))
+	while (isalpha(*word_ptr) || isdigit(*word_ptr))
 		++word_ptr;
-	word_ptr = skip_blanks(word_ptr);
-	if (*word_ptr != '\n')
+	if (*word_ptr)
 	{
-		if (!isalpha(*word_ptr) && !isdigit(*word_ptr))
-			*error_return = ERROR_EXTERN_ILLEGAL_LABEL_NAME;
-		else
-			*error_return = ERROR_EXTERN_BLANKS_IN_NAME;
+		*error_return = ERROR_EXTERN_ILLEGAL_LABEL_NAME;
 		return 0;
 	}
+	line += word_len;
+	line = skip_blanks(line);
+	if (*line && *line != '\n')
+	{
+		*error_return = ERROR_EXTERN_CHARACTERS_AFTER_LABEL;
+		return 0;
+	}	
 	if ((label_index = is_word_label(word, label_array)) == -1)
 	{
 		*error_return = ERROR_EXTERN_LABEL_NOT_DECLARED;
@@ -200,6 +198,11 @@ int read_data_declaration_data(char *line, int instruction_address, Word **word_
 	/* assume first character is not blank */
 	int integer_count, num, sign;
 	integer_count = 0;
+	if (*line == '\n')
+	{
+		*error_return = ERROR_EMPTY_INTEGER_LIST;
+		return integer_count;
+	}
 	while (*line)
 	{
 		num = 0;
@@ -254,11 +257,14 @@ int read_string_declaration_data(char *line, int instruction_address, Word **wor
 	int char_count = 0;
 	if (*line != '"')
 	{
-		*error_return = ERROR_STRING_DECLARATION_NOT_OPENING_WITH_QUOTES;
+		if (*line == '\n')
+			*error_return = ERROR_STRING_NO_INPUT;
+		else
+			*error_return = ERROR_STRING_DECLARATION_NOT_OPENING_WITH_QUOTES;
 		return 0;
 	}
 	++line;
-	while (*line)
+	while (*line && *line != '\n')
 	{
 		if (*line == '"') /* quotes without escape prior to them signify the end of the string */
 			break;
@@ -270,13 +276,18 @@ int read_string_declaration_data(char *line, int instruction_address, Word **wor
 		++line, ++char_count;
 	}
 	if (*line != '"') /* broke out of while before quotes closing */
+	{
 		*error_return = ERROR_MISSING_QUOTES_END;
+		return char_count;
+	}
 	++line;
 	line = skip_blanks(line);
 	if (*line != '\n')
+	{
 		*error_return = ERROR_STRING_DECLARATION_CHARACTERS_AFTER_END_OF_QUOTES;
-	if (!(*error_return))
-		*error_return = save_word(instruction_address++, '\0', 0, word_array);
+		return char_count;
+	}
+	*error_return = save_word(instruction_address++, '\0', 0, word_array);
 	return char_count;
 }
 

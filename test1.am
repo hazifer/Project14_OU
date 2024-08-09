@@ -1,5 +1,10 @@
-label3:.string "" 
-what:isthis
-w22:xd
-xd2:.data -9	, 3,9,	14,  1	, -300, 700, +0, +50, -0, 90 	,1
-xd3:.extern xd2
+label3:.string   " i sh21 "
+xd2:.data	 1,  -200, 3    
+xd3:
+.extern xd1  
+.extern xd2   ,
+.extern xd xd2
+.extern te.sta
+.extern xd2
+.extern xd2         	
+big:.string "test"

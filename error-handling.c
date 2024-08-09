@@ -4,22 +4,37 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 {
 	char num_str[MAX_LINE_DIGITS_IN_OUTPUT_FILE];
 	char output_message[MAX_CHARS_IN_LINE * ERROR_MESSAGE_LINE_LENGTH_MULTIPLIER];
-	strcpy(output_message, ERROR_BASE_STRING);
-	strcat(output_message, file_name);
+
+	if (error_type != WARN_LABEL_IN_ENTRY_EXTERN_LINE)
+	{
+		strcpy(output_message, ERROR_BASE_STRING);
+		strcat(output_message, file_name);
+	}
+	else
+	{
+		strcpy(output_message, WARN_BASE_STRING);
+		strcat(output_message, file_name);
+	}
 	
 	switch(error_type)
 	{	
+		case WARN_LABEL_IN_ENTRY_EXTERN_LINE:
+			strcat(output_message, ": characters detected after label in .extern declaration in line ");
+			break;
+		case ERROR_EXTERN_CHARACTERS_AFTER_LABEL:
+			strcat(output_message, ": characters detected after label in .extern declaration in line ");
+			break;
 		case ERROR_EXTERN_EMPTY_LABEL:
 			strcat(output_message, ": empty label as input in .extern declaration in line ");
 			break;
 		case ERROR_EXTERN_ILLEGAL_LABEL_NOT_BEGIN_WITH_ALPHA:
 			strcat(output_message, ": illegal label name as input (not beginning with alphabetic letter) in .extern declaration in line ");
 			break;
+		/*case ERROR_EXTERN_BLANKS_IN_NAME:
+			strcat(output_message, ": illegal label name as input (blanks in name) in .extern declaration in line ");
+			break;*/
 		case ERROR_EXTERN_ILLEGAL_LABEL_NAME:
 			strcat(output_message, ": illegal label name as input (illegal character used) in .extern declaration in line ");
-			break;
-		case ERROR_EXTERN_BLANKS_IN_NAME:
-			strcat(output_message, ": illegal label name as input (blanks in name) in .extern declaration in line ");
 			break;
 		case ERROR_EXTERN_LABEL_NOT_DECLARED:
 			strcat(output_message, ": illegal label name as input (not declared in code) in .extern declaration in line ");
@@ -42,14 +57,17 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 		case ERROR_EMPTY_INTEGER_LIST:
 			strcat(output_message, ": empty integer list in .data declaration in line ");
 			break;
+		case ERROR_STRING_NO_INPUT:
+			strcat(output_message, ": no input for .string declaration in line ");
+			break;
 		case ERROR_STRING_DECLARATION_NOT_OPENING_WITH_QUOTES:
-			strcat(output_message, ": incorrect string format for .string declaration, no quotes opening the string in line ");
+			strcat(output_message, ": incorrect string format for .string declaration, string not opened with quotes in line ");
 			break;
 		case ERROR_STRING_DECLARATION_CHARACTERS_AFTER_END_OF_QUOTES:
 			strcat(output_message, ": incorrect string format for .string declaration, characters following the string in line ");
 			break;
 		case ERROR_MISSING_QUOTES_END:
-			strcat(output_message, ": incorrect string format for .string declaration, missing quotes' end for string in line");
+			strcat(output_message, ": incorrect string format for .string declaration, missing quotes' end for string in line ");
 			break;
 		case ERROR_COMMAND_UNKNOWN:
 			/* add command to be logged? */

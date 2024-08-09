@@ -30,13 +30,18 @@ typedef struct Word {
 
 int begin_assembler(char *fname, char *after_macro_fname, Word **word_array, Label **labels);
 
+/* first_after_macro_scan: scans the input file after the macros were expanded.
+ * assumes a proper after macro file was input.
+ * returns 0 when no errors has occurred
+ * returns 1 when a code error has occurred
+ * returns ERROR_TERMINATE_ASSEMBLER when any sort of memory allocation error has occurred */
 int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **labels);
 
 /* after_macro_handle_label: responsible for label portion handling after the macro expansion.
  * calls for verify_label_syntax(), verify_label_unique(), and save_label()
- * returns the first error seen from any of any above and sets it into error_return
- * sets error_return to 0 if no error occurred and all of the above functions succeeded */
-void after_macro_handle_label(char *line, char *colon_ptr, int line_number, int instruction_address, Label **label_array, int *error_return, int *stored_label_index);
+ * returns the first error found from any of any above
+ * return 0 if not error was found */
+int after_macro_handle_label(char *line, char *colon_ptr, int instruction_address, Label **label_array, int *stored_label_index);
 
 /* after_macro_save_words: saves words, their addresses and their values into the Word struct array
  * this is done starting a line, and the call ends with that line
