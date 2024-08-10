@@ -106,6 +106,9 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 		line_ptr = skip_blanks(line_ptr);
 		if (command_type == -1)
 		{
+			/* declaration types */
+			printf("line = %s", line);
+			printf("before index = %d\n", word_array_index);
 			command_type = get_declaration_type(word);
 			if (command_type == TYPE_STRING || command_type == TYPE_DATA)
 				word_array_index = skip_data_words(line_ptr, *word_array, word_array_index, command_type);
@@ -115,10 +118,12 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 				error_return = second_scan_read_entry_declaration(word, *label_array);
 				++word_array_index;
 			}
+			printf("after index = %d\n", word_array_index);
 			/* extern types were already handled in first read and are ignored! */
 		}
 		else
 		{
+			/* command types */
 
 		}
 		if (error_return)
