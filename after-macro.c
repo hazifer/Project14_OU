@@ -2,7 +2,7 @@
 
 int begin_assembler(char *fname, char *after_label_fname, Word **word_array, Label **label_array)
 {
-	int first_scan_return_value;
+	int first_scan_return_value, second_scan_return_value;
 	FILE *fp = fopen(after_label_fname, "r");
 	if (!fp)
 		return 1;
@@ -13,11 +13,11 @@ int begin_assembler(char *fname, char *after_label_fname, Word **word_array, Lab
 	if (!first_scan_return_value)
 		return 1;
 	/* update addresses for data_type labels */
-	/*increment_data_type_labels_address(*label_array, first_scan_return_value);*/
+	increment_data_type_labels_address(*label_array, first_scan_return_value);
 	/* begin second scan */
-/*	fseek(fp, 0, SEEK_SET);
+	fseek(fp, 0, SEEK_SET);
 	second_scan_return_value = second_after_macro_scan(fp, after_label_fname, word_array, label_array);
-	fclose(fp);*/
+	fclose(fp);
 	/* in case either scans fail, we don't create the output files */
 	return 0;
 }
@@ -78,8 +78,8 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 				continue;
 		}
 		/* set label type as data if needed */
-	/*	if (label_set && (command_type == TYPE_DATA || command_type == TYPE_STRING))
-			(*label_array)[label_index].label_type = TYPE_DATA;*/
+		if (label_set && (command_type == TYPE_DATA || command_type == TYPE_STRING))
+			(*label_array)[label_index].label_type = TYPE_DATA;
 	}
 	if (error_flag)
 		return 0;
@@ -150,6 +150,7 @@ int after_macro_handle_label(char *line, char *colon_ptr, int instruction_addres
 	read_word(colon_ptr + 1, word);
 	if (!strcmp(word, ".extern") || !strcmp(word, ".entry"))
 		return WARN_LABEL_IN_ENTRY_EXTERN_LINE;
+	printf("label_name = %s index = %d\n", label_name, *stored_label_index);
 	return_value = save_label(label_name, label_array, instruction_address, stored_label_index);
 	return return_value;
 }
@@ -236,14 +237,13 @@ int first_read_extern_declaration_data(char *line, int instruction_address, Labe
 		*error_return = ERROR_EXTERN_CHARACTERS_AFTER_LABEL;
 		return 0;
 	}
-/*	
 	if ((label_index = is_word_label(word, label_array)) != -1)
 	{
 		*error_return = ERROR_EXTERN_LABEL_ALREADY_DECLARED;
 		return 0;
-	}*/
+	}
 	save_label(word, label_array, instruction_address, &label_index);
-/*	(*label_array)[label_index].label_type = TYPE_EXTERN;*/
+	(*label_array)[label_index].label_type = TYPE_EXTERN;
 	return 0;
 }
 
@@ -278,14 +278,15 @@ int first_read_entry_declaration_data(char *line, int instruction_address, Label
 		*error_return = ERROR_ENTRY_CHARACTERS_AFTER_LABEL;
 		return 0;
 	}
-	
+/*	
 	label_index = is_word_label(word, label_array);
-	/*if (label_index == -1)
+	if (label_index == -1)
 	{
 		*error_return = ERROR_ENTRY_LABEL_NOT_DECLARED;
 		return 0;
-	}*/
-	(*label_array)[label_index].label_type = TYPE_ENTRY;
+	}
+	printf("entry label_index = %d\n", label_index);
+	(*label_array)[label_index].label_type = TYPE_ENTRY;*/
 	return 0;
 }
 
@@ -526,9 +527,11 @@ int verify_label_syntax(char *line, char *end)
 int find_label_by_name(char *name, Label *label_array)
 {
 	int i = 0;
-	while (label_array[i].address)
-		if (!strcmp(label_array[i++].name, name))
+	while (label_array[i].address) {
+		if (!strcmp(label_array[i].name, name))
 				return i;
+		++i;
+	}
 	return -1;
 }
 
@@ -554,7 +557,6 @@ int save_label(char *input_label_name, Label **label_array, int instruction_coun
 		return 0;
 	}
 	label_array_dereference = *label_array;
-	printf("input_label_name = %s\n", input_label_name);
 	strcpy(label_array_dereference[next_label_array_index].name, input_label_name);
 	label_array_dereference[next_label_array_index].address = instruction_count;
 	label_array_dereference[next_label_array_index].label_type = TYPE_CODE; /* defaults to code on set */
@@ -631,9 +633,7 @@ Label * increment_label_array_index(Label *label_array, int next_label_index, in
 {
 	Label *temp_label_array = NULL;
 	if (next_label_index % LABEL_ARRAY_INIT_SIZE == 0)
-	{
-		printf("xd\n");
-		temp_label_array = allocate_label_array_memory(label_array, error_return); }
+		temp_label_array = allocate_label_array_memory(label_array, error_return);
 	return temp_label_array;
 }
 
@@ -742,13 +742,29 @@ void reset_word_array_indices()
 void print_labels(Label *label_array)
 {
 	int i = 0;
+	printf("Entry labels:\n");
 	while (label_array[i].address)
 	{
-		printf(	"name: %s addr: %d type: %d\n", 
-			label_array[i].name, 
-			label_array[i].address,
-			label_array[i].label_type
-		);
+		if (label_array[i].is_entry) {
+			printf(	"name: %s addr: %d type: %d\n", 
+				label_array[i].name, 
+				label_array[i].address,
+				label_array[i].label_type
+			);
+		}
+		++i;
+	}
+	i = 0;
+	printf("Other labels:\n");
+	while (label_array[i].address)
+	{
+		if (!label_array[i].is_entry) {
+			printf(	"name: %s addr: %d type: %d\n", 
+				label_array[i].name, 
+				label_array[i].address,
+				label_array[i].label_type
+			);
+		}
 		++i;
 	}
 }

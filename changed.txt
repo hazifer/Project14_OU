@@ -2,3 +2,5 @@
 line 83/*	if (label_set && (command_type == TYPE_DATA || command_type == TYPE_STRING))
 			(*label_array)[label_index].label_type = TYPE_DATA;*/
 line 248/*	(*label_array)[label_index].label_type = TYPE_EXTERN;*/
+line 836/*label_array[label_index].is_entry = 1;*/
+line 288/*(*label_array)[label_index].label_type = TYPE_ENTRY;*/

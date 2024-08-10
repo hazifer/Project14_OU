@@ -41,7 +41,6 @@ int main(int argc, char *argv[])
 			continue;
 		}
 		begin_assembler(fname, after_macro_fname, &words, &labels);
-		printf("labels:\n");
 		print_labels(labels);
 		printf("\nwords:\n");
 		print_words(words);
