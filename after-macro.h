@@ -8,8 +8,8 @@
 
 typedef struct Label {
 	char name[MAX_WORD_LENGTH];
+	unsigned int address			: 16;
 	char label_type;
-	unsigned int decimal_instruction_address;
 } Label;
 
 typedef struct Operation_build {
@@ -20,8 +20,8 @@ typedef struct Operation_build {
 } Operation_build;
 
 typedef struct Word {
-	unsigned int decimal_instruction_address;
-	char is_command;
+	unsigned int code_address			: 16;
+	unsigned int is_command				:  1;
 	union {
 		unsigned int value; 
 		Operation_build operation_build;
@@ -46,7 +46,7 @@ int after_macro_handle_label(char *line, char *colon_ptr, int instruction_addres
 /* after_macro_save_words: saves words, their addresses and their values into the Word struct array
  * this is done starting a line, and the call ends with that line
  * after_macro_save_words saves the first syntax error from a line into int *error_return for the callee's use */
-int after_macro_save_words(char *line, int instructions_address, int *error_return, Word **word_array, Label **label_array);
+int after_macro_save_words(char *line, int instruction_address, int *error_return, Word **word_array, Label **label_array, char *command_type);
 int after_macro_verify_command_till_arguments(char **line, char *command_code);
 int after_macro_save_command_arguments(char *line, int instruction_address, char opcode, Word **word_array, int *error_return);
 int after_macro_save_declaration_words(char *line, int instruction_address, char opcode, Word **word_array, Label **label_array, int *error_return);
@@ -77,14 +77,16 @@ int read_entry_declaration_data(char *line, int instruction_address, Label **lab
  * returns 1 on failure and sets the relevant error into error_return */
 int read_extern_declaration_data(char *line, int instruction_address, Label ** label_array, int *error_return);
 
-/* save_label: saves a label's name and decimal instruction address (using ic given) from a given line
+/* save_label: saves a label's name and decimal instruction address (using instruction_address as input) from a given line / input_label_name
  * returns 0 on success, storing the added label's index in label_array into stored_index
  * returns errors returned by increment_label_array_index():
  * ERROR_EXCEEDED_LABEL_ARRAY_LIMIT
  * ERROR_PROGRAM_MEMORY_ALLOCATION */
-int save_label(char *line, char *end, Label **label_array, int instruction_address, int *stored_label_index);
+int save_label(char *line, char *end, char *input_label_name, Label **label_array, int instruction_address, int *stored_label_index);
 
 int save_word(int instruction_address, int value, char is_command, Word **word_array);
+
+void increment_data_type_labels_address(Label *label_array, int address_increment);
 
 /* save_label_data_type: sets a label's data type by testing against a word input 
  * returns the type (although also stored into label_array[label_index]) */

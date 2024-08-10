@@ -1,10 +1,18 @@
-label3:.string   " i sh21 "
-xd2:.data	 1,  -200, 3    
-xd3:
-.extern xd1  
-.extern xd2   ,
-.extern xd xd2
-.extern te.sta
-.extern xd2
-.extern xd2         	
-big:.string "test"
+MAIN:	add r3, LIST
+LOOP:	prn	#48
+	macr mmacr
+	cmp r3, #-6
+	bne END
+	endmacr
+	lea STR, r6
+	inc r6
+	mov *r6,K
+	sub r1, r4
+	mmacr
+	dec K
+	jmp LOOP
+END:	stop
+STR:	.string "abcd"
+LIST:	.data 6, -9
+	.data -100
+K:	.data 31

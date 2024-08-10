@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[])
 {
-	int return_value, error_return;
+	int error_return;
 	char *fname, after_macro_fname[MAX_FILENAME_LENGTH];
 	Label *labels = NULL;
 	Word *words = NULL;
@@ -40,19 +40,15 @@ int main(int argc, char *argv[])
 			free(labels);
 			continue;
 		}
-		return_value = begin_assembler(fname, after_macro_fname, &words, &labels);
-		if (return_value) 
-		{
-			free(labels);
-			free(words);
-			continue;
-		}
+		begin_assembler(fname, after_macro_fname, &words, &labels);
 		printf("labels:\n");
 		print_labels(labels);
 		printf("\nwords:\n");
 		print_words(words);
-		free(labels);
-		free(words);
+		if (labels)
+			free(labels);
+		if (words)
+			free(words);
 	}
 	return 0;
 }
