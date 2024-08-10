@@ -9,7 +9,8 @@
 typedef struct Label {
 	char name[MAX_WORD_LENGTH];
 	unsigned int address			: 16;
-	char label_type;
+	unsigned int label_type			:  8;
+	unsigned int is_entry			:  1;
 } Label;
 
 typedef struct Operation_build {
@@ -37,6 +38,9 @@ int begin_assembler(char *fname, char *after_macro_fname, Word **word_array, Lab
  * returns ERROR_TERMINATE_ASSEMBLER when any sort of memory allocation error has occurred */
 int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **labels);
 
+int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **label_array);
+
+int second_scan_read_entry_declaration(char *label_name, Label *label_array);
 /* after_macro_handle_label: responsible for label portion handling after the macro expansion.
  * calls for verify_label_syntax(), verify_label_unique(), and save_label()
  * returns the first error found from any of any above
@@ -65,17 +69,17 @@ int read_string_declaration_data(char *line, int instruction_address, Word **wor
  * sets errors in reading into error_return */
 int read_data_declaration_data(char *line, int instruction_address, Word **word_array, int *error_return);
 
-/* read_entry_declaration_data: assumes line points to a non blank character
+/* first_read_entry_declaration_data: assumes line points to a non blank character
  * reads an already defined label and sets its label_type to TYPE_ENTRY
  * returns 0 on success
  * returns 1 on failure and sets the relevant error into error_return */
-int read_entry_declaration_data(char *line, int instruction_address, Label **label_array, int *error_return);
+int first_read_entry_declaration_data(char *line, int instruction_address, Label **label_array, int *error_return);
 
-/* read_extern_declaration_data: assumes line points to a non blank character
+/* first_read_extern_declaration_data: assumes line points to a non blank character
  * reads an already defined label and sets its label_type to TYPE_EXTERN
  * returns 0 on success
  * returns 1 on failure and sets the relevant error into error_return */
-int read_extern_declaration_data(char *line, int instruction_address, Label ** label_array, int *error_return);
+int first_read_extern_declaration_data(char *line, int instruction_address, Label ** label_array, int *error_return);
 
 /* save_label: saves a label's name and decimal instruction address (using instruction_address as input) from a given line / input_label_name
  * returns 0 on success, storing the added label's index in label_array into stored_index
@@ -88,6 +92,10 @@ int save_word(int instruction_address, int value, char is_command, Word **word_a
 
 void increment_data_type_labels_address(Label *label_array, int address_increment);
 
+int skip_data_words(Word *word_array, int word_array_index);
+
+int second_read_entry_declaration(char *label_name, Label *label_array);
+
 /* save_label_data_type: sets a label's data type by testing against a word input 
  * returns the type (although also stored into label_array[label_index]) */
 char save_label_data_type(Label *label_array, int label_index, char *word);
@@ -99,10 +107,9 @@ char get_declaration_type(char *word);
  * returns 0 when the syntax is okay */
 int verify_label_syntax(char *line, char *end);
 
-/* verify_label_unique: verifies if a label starting at line and ending at end (assumes end points to ':') is unique
- * returns 0 if it is
- * returns ERROR_LABEL_DUPLICATE if it isn't */
-int verify_label_unique(char *line, char *end, Label **label_array);
+/* find_label_by_name: returns a label's index in label_array (lookup by label name) 
+ * returns -1 if it doesn't exists */
+int find_label_by_name(char *name, Label *label_array);
 
 /* verify_label_syntax: verifies if a line's syntax (after a label) is okay.
  * returns 0 if it is
@@ -115,7 +122,7 @@ int verify_line_syntax(char *line);
 int is_word_label(char *word, Label **label_array);
 
 /* receives a possible op word, and returns it's decimal value opcode if it's an assembly word or -1 if it isn't */
-char get_command_op_code_decimal(char *op);
+char get_command_op_code(char *op);
 
 Label * init_label_array_memory();
 Label * allocate_label_array_memory(Label *label_array, int *error_return);
