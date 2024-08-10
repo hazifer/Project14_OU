@@ -8,9 +8,9 @@
 
 typedef struct Label {
 	char name[MAX_WORD_LENGTH];
-	unsigned int address			: 16;
-	unsigned int label_type			:  8;
-	unsigned int is_entry			:  1;
+	unsigned int address;
+	unsigned int label_type;
+	unsigned int is_entry;
 } Label;
 
 typedef struct Operation_build {
@@ -81,18 +81,18 @@ int first_read_entry_declaration_data(char *line, int instruction_address, Label
  * returns 1 on failure and sets the relevant error into error_return */
 int first_read_extern_declaration_data(char *line, int instruction_address, Label ** label_array, int *error_return);
 
-/* save_label: saves a label's name and decimal instruction address (using instruction_address as input) from a given line / input_label_name
+/* save_label: saves a label's name and decimal instruction address
  * returns 0 on success, storing the added label's index in label_array into stored_index
  * returns errors returned by increment_label_array_index():
  * ERROR_EXCEEDED_LABEL_ARRAY_LIMIT
  * ERROR_PROGRAM_MEMORY_ALLOCATION */
-int save_label(char *line, char *end, char *input_label_name, Label **label_array, int instruction_address, int *stored_label_index);
+int save_label(char *input_label_name, Label **label_array, int instruction_address, int *stored_label_index);
 
 int save_word(int instruction_address, int value, char is_command, Word **word_array);
 
 void increment_data_type_labels_address(Label *label_array, int address_increment);
 
-int skip_data_words(Word *word_array, int word_array_index);
+int skip_data_words(char *line, Word *word_array, int word_array_index, int command_type);
 
 int second_read_entry_declaration(char *label_name, Label *label_array);
 

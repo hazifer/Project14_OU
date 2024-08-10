@@ -1,0 +1,4 @@
+
+line 83/*	if (label_set && (command_type == TYPE_DATA || command_type == TYPE_STRING))
+			(*label_array)[label_index].label_type = TYPE_DATA;*/
+line 248/*	(*label_array)[label_index].label_type = TYPE_EXTERN;*/
