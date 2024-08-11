@@ -13,19 +13,32 @@ typedef struct Label {
 	unsigned int is_entry				:  1;
 } Label;
 
-typedef struct Operation_build {
-	unsigned int opcode				:  8;
-	unsigned int src_addressing_type		:  8;
-	unsigned int dst_addressing_type		:  8;
-	unsigned int are_type				:  8;
-} Operation_build;
+/* ansi doesn't allow for char bitfields? causes a */
+typedef struct Command {
+	unsigned int opcode				:  4;
+	unsigned int src_addressing_type		:  4;
+	unsigned int dst_addressing_type		:  4;
+	unsigned int are_type				:  3;
+} Command;
+
+typedef struct Data_word {
+	unsigned int value				: 12;
+	unsigned int are_type				:  3;
+} Data_word;
+
+typedef struct Complex_data_word {
+	unsigned int src_register			:  3;
+	unsigned int dst_register			:  3;
+	unsigned int are_type				:  3;
+} Complex_data_word;
 
 typedef struct Word {
-	unsigned int code_address			: 16;
-	unsigned int is_command				:  1;
-	union {
-		unsigned int value; 
-		Operation_build operation_build;
+	unsigned int code_address			: 16; /* size is not affected if we make code_address 15 bits */
+	unsigned int is_command				:  1; /* and is_command 1 bit, either way Word is a size of 2 integers */
+	union Data {						      /* even when also trying to squeeze the Operation_build's size and value field to fit 16 bits */
+		Command command; 
+		Data_word data_word;
+		Complex_data_word complex_data_word;
 	} Data;
 } Word;
 
@@ -41,6 +54,12 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **label_array);
 
 int second_scan_read_entry_declaration(char *label_name, Label *label_array);
+
+/* second_scan_read_two_arguments: assumes line is pointing to properly syntaxed two arguemnts for a command of type command_type as input
+ * return 0 when the arguments are of correct addressing types for the command type
+ * returns an error otherwise */
+int second_scan_read_two_arguments(char *line, Word *word_array, int word_array_index, Label *label_array, int command_type);
+
 /* after_macro_handle_label: responsible for label portion handling after the macro expansion.
  * calls for verify_label_syntax(), verify_label_unique(), and save_label()
  * returns the first error found from any of any above
@@ -54,6 +73,8 @@ int after_macro_save_words(char *line, int instruction_address, int *error_retur
 int after_macro_verify_command_till_arguments(char **line, char *command_code);
 int after_macro_save_command_arguments(char *line, int instruction_address, char opcode, Word **word_array, int *error_return);
 int after_macro_save_declaration_words(char *line, int instruction_address, char opcode, Word **word_array, Label **label_array, int *error_return);
+
+int handle_addressing(char *word, int *src_value, int *error_return);
 
 /* read_string_declaration_data: assumes line points to a non blank character
  * reads a string and stores each character from it into word_array (with its address and ascii value)
@@ -88,7 +109,7 @@ int first_read_extern_declaration_data(char *line, int instruction_address, Labe
  * ERROR_PROGRAM_MEMORY_ALLOCATION */
 int save_label(char *input_label_name, Label **label_array, int instruction_address, int *stored_label_index);
 
-int save_word(int instruction_address, int value, char is_command, Word **word_array);
+int save_word(int instruction_count, int value, char is_command, Word **word_array, int *word_array_index);
 
 void increment_data_type_labels_address(Label *label_array, int address_increment);
 

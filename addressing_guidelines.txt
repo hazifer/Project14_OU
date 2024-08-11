@@ -1,0 +1,14 @@
+	/* addressing_types:
+	 * IMMEDIATE_ADDRESSING - '#' need extra word. set are_type to 0b100 (A set) and value in 12 bit 2's complement
+	 * 	set addressing_type in command for src/dst to 0b0001 (type 0)
+	 * DIRECT_ADDRESSING - 'LABEL' ignore in first scan, need extra word. set are_type to 0b010 (R set) for internal label OR 0b001 (E set) for external label
+	 * 	value is address in 12 bits unsigned
+	 * 	set addressing_type in command for src/dst to 0b0010 (type 1)
+	 * INDIRECT_REGISTER_ADDRESSING - '*rX' need extra word, if both src and dst are '*rX', only one word needed.
+	 * 	set are_type to 0b100 (A set)
+	 * 	destination register is set in bits 3-5, source register is set in bits 6-8
+	 * 	set addressing_type in command for src/dst to 0b0100 (type 2)
+	 * INDIRECT_REGISTER_ADDRESSING - 'rX' need extra word, if both src and dst are 'rX', only one word needed.
+	 * 	set are_type to 0b100 (A set)
+	 * 	destination register is set in bits 3-5, source register is set in bits 6-8
+	 * 	set addressing_type in command for src/dst to 0b1000 (type 3) */

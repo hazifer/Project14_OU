@@ -6,7 +6,8 @@
 #define	SUCCESS_BASE_STRING	"\tsuccessfuly completed macro expansion for file "
 
 enum {
-	SUCCESS = 				500, /* we start with a big number so there are no overlapping op codes/command types in the future */
+	/* error codes */
+	SUCCESS = 				500, /* we start with a big number so there are no overlapping op codes/command types */
 	ERROR_SOURCE_FILE_MEMORY_ALLOCATION,
 	ERROR_SOURCE_FILE_ACCESS,
 	ERROR_DESTINATION_FILE_MEMORY_ALLOCATION,
@@ -60,6 +61,8 @@ enum {
 	ERROR_ENTRY_ILLEGAL_LABEL_NOT_BEGIN_WITH_ALPHA,
 	ERROR_ENTRY_ILLEGAL_LABEL_NAME,
 	ERROR_ENTRY_CHARACTERS_AFTER_LABEL,
+	ERROR_ILLEGAL_CHARACTER_FOR_ARGUMENT,
+
 
 	WARN_LABEL_IN_ENTRY_EXTERN_LINE,
 
@@ -74,12 +77,27 @@ enum {
 
 	ERROR_TERMINATE_ASSEMBLER = 		-2,
 	BLANK_LINE =				-1,
+
+	ADDRESSING_TYPE_IMMEDIATE = 		1,
+	ADDRESSING_TYPE_DIRECT= 2,
+	ADDRESSING_TYPE_INDIRECT_REGISTER = 	4,
+	ADDRESSING_TYPE_DIRECT_REGISTER = 	8,
+	ADDRESSING_TYPE_A_SET = 		4,
+	ADDRESSING_TYPE_R_SET = 		2,
+	ADDRESSING_TYPE_E_SET = 		1,
+
 	/* opcodes are 				0-15 */
+	/* code/label types are kept in 8 bit value range */
 	TYPE_CODE =				50,
 	TYPE_DATA,
 	TYPE_EXTERN,
 	TYPE_ENTRY,
 	TYPE_STRING,
+	/* addressing types are kept in 8 bit value range */
+	IMMEDIATE_ADDRESSING,
+	DIRECT_ADDRESSING,
+	INDIRECT_REGISTER_ADDRESSING,
+	DIRECT_REGISTER_ADDRESSING,
 
 	MAX_LINE_DIGITS_IN_OUTPUT_FILE =	10,
 	MAX_FILENAME_LENGTH = 			32,
