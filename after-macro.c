@@ -481,7 +481,8 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 {
 	/* assume line points to a non ',' character */
 	/* assume opcode is between in [0,15] */
-	char word[MAX_WORD_LENGTH], argument_addressing_type, words_added = 0;
+	char src_argument[MAX_WORD_LENGTH], dst_argument[MAX_WORD_LENGTH];
+	char src_argument_addressing_type, dst_argument_addressing_type, words_added = 0;
 	int word_len, word_array_index, command_word_array_index, src_value, dst_value;
 	Word *word_array_dereference = *word_array;
 	*error_return = 0;
@@ -493,60 +494,106 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 			*error_return = ERROR_MISSING_ARGUMENTS;
 			return words_added;
 		}
-		word_len = read_word_delimited(line, word, " \t,"); /* must be greater than one length due to assumption */
-		command_word_array_index = word_array_index - 1; /* command word was saved right before the first argument */
-		argument_addressing_type = handle_addressing(word, &src_value, error_return);
-		if (*error_return)
+		word_len = read_word_delimited(line, src_argument, " \t,"); /* first word read must be greater than one length due to assumption */
+		line += word_len;
+		line = skip_blanks(line);
+		if (*line != ',')
+		{
+			if (*line == '\n')
+				*error_return = ERROR_MISSING_ARGUMENTS;
+			else
+				*error_return = ERROR_BLANK_BETWEEN_ARGUMENTS; /* blanks IN argument? */
 			return words_added;
+		}
+		++line;
+		line = skip_blanks(line);
+		word_len = read_word_delimited(line, dst_argument, " \t,"); /* second word read, after skipping blanks we expect a non ',' */
+		if (!word_len)
+		{
+			*error_return = ERROR_CONSEQUTIVE_COMMAS;
+			return words_added;
+		}
+		line += word_len;
+		line = skip_blanks(line);
+		/* FIX THIS */
+		if (*line != '\n')
+		{
+			if (*line == ',')
+				*error_return = ERROR_COMMA_AFTER_ARGUMENTS;
+			else
+				*error_return = ERROR_BLANK_BETWEEN_ARGUMENTS;
+			return words_added;
+		}
+		/* keep the data storing of words till after the simpler syntax checks */
+		src_argument_addressing_type = handle_addressing(src_argument, &src_value, error_return);
+		if (*error_return) /* *error_return holds errors for the source word's syntax such as punctuations' existence etc */
+			return words_added;
+		dst_argument_addressing_type = handle_addressing(dst_argument, &dst_value, error_return);
+		if (*error_return) /* *error_return holds errors for the destination word's syntax such as punctuations' existence etc */
+			return words_added;
+		if (opcode == LEA_OPCODE && src_argument_addressing_type != ADDRESSING_TYPE_DIRECT)
+		{
+			*error_return = ERROR_SOURCE_ADDRESSING_TYPE_INVALID;
+			return words_added;
+		}
+		if (opcode != CMP_OPCODE && dst_argument_addressing_type == ADDRESSING_TYPE_IMMEDIATE)
+		{
+			*error_return = ERROR_SOURCE_ADDRESSING_TYPE_INVALID;
+			return words_added;
+		}
+		/* addressing type validation passed, save into memory */
+		command_word_array_index = word_array_index - 1; /* command word was saved right before the first argument */
 		save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
-		if (argument_addressing_type == ADDRESSING_TYPE_IMMEDIATE)
+		if (src_argument_addressing_type == ADDRESSING_TYPE_IMMEDIATE)
 		{
 			/* are_type for command ? */
 			word_array_dereference[command_word_array_index].Data.command.src_addressing_type = ADDRESSING_TYPE_IMMEDIATE;
 			word_array_dereference[word_array_index].Data.data_word.value = src_value;
 			word_array_dereference[word_array_index].Data.data_word.are_type = ADDRESSING_TYPE_A_SET;
 		}
-		else if (argument_addressing_type == ADDRESSING_TYPE_DIRECT) /* no value for DIRECT ADDRESSING YET, and we don't know if label is internal or external */
+		else if (src_argument_addressing_type == ADDRESSING_TYPE_DIRECT) /* no value for DIRECT ADDRESSING YET, and we don't know if label is internal or external */
 			word_array_dereference[command_word_array_index].Data.command.src_addressing_type = ADDRESSING_TYPE_DIRECT;
-		else if (argument_addressing_type == ADDRESSING_TYPE_INDIRECT_REGISTER)
+		else if (src_argument_addressing_type == ADDRESSING_TYPE_INDIRECT_REGISTER)
 		{
 			word_array_dereference[command_word_array_index].Data.command.src_addressing_type = ADDRESSING_TYPE_INDIRECT_REGISTER;
 			word_array_dereference[word_array_index].Data.complex_data_word.src_register = src_value;
 			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
 		}
-		else /* argument_addressing_type == DIRECT_REGISTER_ADDRESSING */
+		else /* src_argument_addressing_type == DIRECT_REGISTER_ADDRESSING */
 		{
 			word_array_dereference[command_word_array_index].Data.command.src_addressing_type = ADDRESSING_TYPE_DIRECT_REGISTER;
 			word_array_dereference[word_array_index].Data.complex_data_word.src_register = src_value;
 			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
 		}
-		line += word_len;
-		line = skip_blanks(line);
-		if (*line != ',')
+		/* dst addressing */
+		if (dst_argument_addressing_type == ADDRESSING_TYPE_IMMEDIATE)
 		{
-			*error_return = ERROR_BLANK_BETWEEN_ARGUMENTS;
-			return words_added;
+			/* are_type for command ? */
+			save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
+			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_IMMEDIATE;
+			word_array_dereference[word_array_index].Data.data_word.value = dst_value;
+			word_array_dereference[word_array_index].Data.data_word.are_type = ADDRESSING_TYPE_A_SET;
 		}
-		++line;
-		line = skip_blanks(line);
-		word_len = read_word_delimited(line, word, " \t,");
-		if (!word_len)
+		else if (dst_argument_addressing_type == ADDRESSING_TYPE_DIRECT) /* no value for DIRECT ADDRESSING YET, and we don't know if label is internal or external */
 		{
-			*error_return = ERROR_CONSEQUTIVE_COMMAS;
-			return words_added;
+			save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
+			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_DIRECT;
 		}
-		save_word(instruction_address, 0, 0, word_array, &word_array_index);
-		line += word_len;
-		line = skip_blanks(line);
-		if (*line == ',' && *line != '\n')
+		else if (dst_argument_addressing_type == ADDRESSING_TYPE_INDIRECT_REGISTER)
 		{
-			if (read_word_delimited(line, word, " \t,"))
-			{
-				*error_return = ERROR_TOO_MANY_ARGUMENTS;
-				return words_added;
-			}
-			*error_return = ERROR_COMMA_AFTER_ARGUMENTS;
-			return words_added;
+			if (src_argument_addressing_type != ADDRESSING_TYPE_INDIRECT_REGISTER && src_argument_addressing_type != ADDRESSING_TYPE_DIRECT_REGISTER)
+				save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
+			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_INDIRECT_REGISTER;
+			word_array_dereference[word_array_index].Data.complex_data_word.dst_register = dst_value;
+			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
+		}
+		else /* dst_argument_addressing_type == DIRECT_REGISTER_ADDRESSING */
+		{
+			if (src_argument_addressing_type != ADDRESSING_TYPE_INDIRECT_REGISTER && src_argument_addressing_type != ADDRESSING_TYPE_DIRECT_REGISTER)
+				save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
+			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_DIRECT_REGISTER;
+			word_array_dereference[word_array_index].Data.complex_data_word.dst_register = dst_value;
+			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
 		}
 		return words_added;
 	}
@@ -558,17 +605,53 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 			*error_return = ERROR_MISSING_ARGUMENTS;
 			return words_added;
 		}
-		word_len = read_word_delimited(line, word, " \t,"); /* must be greater than one length due to assumption */
-		save_word(instruction_address++, 0, 0, word_array, &word_array_index);
+		word_len = read_word_delimited(line, dst_argument, " \t,"); /* must be greater than one length due to assumption */
 		line += word_len;
 		line = skip_blanks(line);
-		if (*line == ',')
+		if (*line != '\n')
 		{
-			*error_return = ERROR_COMMA_AFTER_ARGUMENTS;
+			if (*line == ',')
+				*error_return = ERROR_COMMA_AFTER_ARGUMENTS;
+			else
+				*error_return = ERROR_BLANK_BETWEEN_ARGUMENTS;
 			return words_added;
 		}
-		if (read_word_delimited(line, word, " \t,"))
-			*error_return = ERROR_BLANK_BETWEEN_ARGUMENTS;
+		dst_argument_addressing_type = handle_addressing(dst_argument, &dst_value, error_return);
+		if (*error_return) /* *error_return holds errors for the source word's syntax such as punctuations' existence etc */
+			return words_added;
+		if (opcode != PRN_OPCODE && dst_argument_addressing_type == ADDRESSING_TYPE_IMMEDIATE)
+		{
+			*error_return = ERROR_DESTINATION_ADDRESSING_TYPE_INVALID;
+			return words_added;
+		}
+		if (dst_argument_addressing_type == ADDRESSING_TYPE_DIRECT_REGISTER && (opcode == JMP_OPCODE || opcode == BNE_OPCODE || opcode == JSR_OPCODE))
+		{
+			*error_return = ERROR_DESTINATION_ADDRESSING_TYPE_INVALID;
+			return words_added;
+		}
+		command_word_array_index = word_array_index - 1; /* command word was saved right before the first argument */
+		save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
+		if (dst_argument_addressing_type == ADDRESSING_TYPE_IMMEDIATE)
+		{
+			/* are_type for command ? */
+			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_IMMEDIATE;
+			word_array_dereference[word_array_index].Data.data_word.value = dst_value;
+			word_array_dereference[word_array_index].Data.data_word.are_type = ADDRESSING_TYPE_A_SET;
+		}
+		else if (dst_argument_addressing_type == ADDRESSING_TYPE_DIRECT) /* no value for DIRECT ADDRESSING YET, and we don't know if label is internal or external */
+			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_DIRECT;
+		else if (dst_argument_addressing_type == ADDRESSING_TYPE_INDIRECT_REGISTER)
+		{
+			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_INDIRECT_REGISTER;
+			word_array_dereference[word_array_index].Data.complex_data_word.dst_register = dst_value;
+			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
+		}
+		else /* dst_argument_addressing_type == DIRECT_REGISTER_ADDRESSING */
+		{
+			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_DIRECT_REGISTER;
+			word_array_dereference[word_array_index].Data.complex_data_word.dst_register = dst_value;
+			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
+		}
 		return words_added;
 	}
 	/* expect 0 arguments due to assumption there is a word to be read */

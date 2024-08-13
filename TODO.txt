@@ -4,3 +4,7 @@
 -	labels should conform to digit and alphabetic characters only, no blanks between label and ':' 
 -	add registers as reserved words
 -	are_type for command ?
+-	show multiple errors per line? 
+-	complete handle addressing
+-	complete no arguments section in command read save arguments
+-	dive deeper into errors possible when reading words for commands
