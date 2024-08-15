@@ -34,4 +34,8 @@ int count_words_in_line(char *line, char *delimiters, const int max_word_length)
  * returns 0 if it is part of the set */
 char verify_not_reserved(char *word);
 
+/* get_register: verifies if word is one of the available 8 registers for the program r0 to r7
+ * returns the register number/index if it is
+ * returns -1 otherwise */
+char get_register(char *word);
 #endif /* STRINGUTILITY_H */

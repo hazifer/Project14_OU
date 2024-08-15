@@ -92,3 +92,14 @@ char verify_not_reserved(char *word)
 				return 0;
 	return 1;
 }
+
+char get_register(char *word)
+{
+	char *registers[] = { "r0", "r1", "r2", "r3",
+			      "r4", "r5", "r6", "r7" };
+	int arr_len = sizeof(registers) / sizeof(char *);
+	for (arr_len--; arr_len >= 0; arr_len--)
+		if (!strcmp(registers[arr_len], word))
+			return arr_len;
+	return -1;
+}

@@ -76,6 +76,21 @@ int after_macro_save_declaration_words(char *line, int instruction_address, char
 
 int handle_addressing(char *word, int *src_value, int *error_return);
 
+/* read_immediate_addressing: expects an integer in word, representing an immediate to store into word_value
+ * returns ADDRESSING_TYPE_IMMEDIATE and sets word_value to the read immediate on success.
+ * returns 0 and sets error_return to ERROR_IMMEDIATE_INVALID on failure */
+int read_immediate_addressing(char *word, int *word_value, int *error_return);
+
+/* read_indirect_register_addressing: expects a register in word, representing a register to be indirectly accessed.
+ * returns ADDRESSING_TYPE_INDIRECT_REGISTER and sets word_value to the registers' index on success
+ * returns 0 and sets error_return to ERROR_INDIRECT_REGISTER_INVALID on failure */
+int read_indirect_register_addressing(char *word, int *word_value, int *error_return);
+
+/* read_direct_register_addressing: expects a register in word, representing a register to be directly accessed.
+ * returns ADDRESSING_TYPE_DIRECT_REGISTER and sets word_value to the registers' index on success
+ * returns 0 and sets error_return to ERROR_DIRECT_REGISTER_INVALID on failure */
+int read_direct_register_addressing(char *word, int *word_value, int *error_return);
+
 /* read_string_declaration_data: assumes line points to a non blank character
  * reads a string and stores each character from it into word_array (with its address and ascii value)
  * returns number of characters read

@@ -89,8 +89,9 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **label_array)
 {
 	char line[MAX_CHARS_IN_LINE], *line_ptr, word[MAX_WORD_LENGTH], error_flag, command_type;
-	int word_array_index, error_return, word_len, line_number;
+	int word_array_index, error_return, word_len, line_number, label_index;
 	word_array_index = line_number = error_flag = 0;
+	Data current_command;
 	while (fgets(line, MAX_CHARS_IN_LINE, fp))
 	{
 		/* second scan begins ONLY if the syntax for the commands is correct */
@@ -104,8 +105,8 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 		command_type = get_command_op_code(word);
 		line_ptr += word_len;
 		line_ptr = skip_blanks(line_ptr);
-		printf("line = %s", line);
-		printf("before index = %d\n", word_array_index);
+		/*printf("line = %s", line);*/
+		/*printf("before index = %d\n", word_array_index);*/
 		if (command_type == -1)
 		{
 			/* declaration types */
@@ -120,54 +121,73 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 			}
 			/* extern types were already handled in first read and are ignored! */
 		}
+		else if (current_command.src_addressing_type == ADDRESSING_TYPE_DIRECT || current_command.dst_addressing_type == ADDRESSING_TYPE_DIRECT)
+		{
+			current_command = word_array[word_array_index].Data.command;
+			word_len = read_word(line_ptr, word);
+			if (current_command.src_addressing_type)
+				++word_array_index;
+			if (current_command.src_addressing_type == ADDRESSING_TYPE_DIRECT)
+			{	
+				/* this is a case of 2 arguments */
+				label_index = find_label_by_name(word, *label_array);
+				if (label_index == -1)
+					print_error(fname, line, ERROR_ENTRY_LABEL_NOT_DECLARED, line_number);
+				else
+					word_array[word_array_index].Data.data_word.value = (*label_array)[label_index].address;
+				line_ptr += len;
+				line_ptr = skip_blanks(line_ptr);
+				line_ptr += 1; /* pointing to ',' */
+			}
+			if (current_command.dst_addressing_type == ADDRESSING_TYPE_DIRECT)
+			{	
+				/* this is a case of 2 arguments */
+				++word_array_index;
+				label_index = find_label_by_name(word, *label_array);
+				if (label_index == -1)
+					print_error(fname, line, ERROR_ENTRY_LABEL_NOT_DECLARED, line_number);
+				else
+					word_array[word_array_index].Data.data_word.value = (*label_array)[label_index].address;
+				line_ptr += len;
+				line_ptr = skip_blanks(line_ptr);
+				line_ptr += 1; /* pointing to ',' */
+			}
+
+			/* case of 1 ? */
+		}
 		else
 		{
-			/* 2 argument command types */
-			if (command_type <= 4)
-			{
-				error_return = second_scan_read_two_arguments(line_ptr, *word_array, word_array_index, *label_array, command_type);
-				word_array_index += 2;
-			}
-			/* 1 argument command types */
-			else if (command_type <= 13)
-			{
-/*				error_return = second_scan_read_two_arguments(line_ptr, *word_array, word_array_index, *label_array, command_type);*/
-				++word_array_index;
-			}
-			/* 0 argument command types */
-			else
-			{
+			/* skip number of words by command type */
 
-			}
 		}
-		printf("after index = %d\n", word_array_index);
+		/*printf("after index = %d\n", word_array_index);*/
 		if (error_return)
 		{
 			print_error(fname, line, error_return, line_number);
 			error_flag = 1;
 		}
 	}
-	return 0;
+	return error_flag;
 }
 
 int second_scan_read_two_arguments(char *line, Word *word_array, int word_array_index, Label *label_array, int command_type)
 {
-	/* word_array points to a command word which needs a source and a destination argument */
+	/* word_array points to a command word which needs a source and a destination argument 
 	char word[MAX_WORD_LENGTH], src_addressing_type, dst_addressing_type;
 	int word_len, error_return = 0;
-	word_len = read_word_delimited(line, word, ","); /* we dont expect blanks */
+	word_len = read_word_delimited(line, word, ","); *//* we dont expect blanks */
 /*	src_addressing_type = get_addressing_type(word, label_array, &error_return);*/ /* src_addressing_type now holds an error or a proper addressing type */
-	if (error_return)
+/*	if (error_return)
 		return error_return;
-       	line += word_len + 1; /* point past ',' */
-	word_len = read_word_delimited(line, word, ", \t");
+       	line += word_len + 1;*/ /* point past ',' */
+/*	word_len = read_word_delimited(line, word, ", \t");*/
 /*	dst_addressing_type = get_addressing_type(word, label_array, &error_return); *//* dst_addressing_type now holds an error or a proper addressing type */
-	if (error_return)
-		return error_return;
+/*	if (error_return)
+		return error_return;*/
 	/*
 	error_return = verify_addressing_types_for_command(command_type, src_addressing_type, dst_addressing_type);*/
-	if (error_return)
-		return error_return;
+/*	if (error_return)
+		return error_return;*/
 	return 0;
 }
 
@@ -221,6 +241,7 @@ int after_macro_save_words(char *line, int instruction_address, int *error_retur
 			return instruction_address;
 		}
 		/* save argument words */
+		printf("line: %s", line);
 		instruction_address += after_macro_save_command_arguments(command_end_ptr, instruction_address, command_code, word_array, error_return);
 	}
 	else /* declaration type command (".data" ".string" etc) */
@@ -291,7 +312,7 @@ int first_read_extern_declaration_data(char *line, int instruction_address, Labe
 int first_read_entry_declaration_data(char *line, int instruction_address, Label **label_array, int *error_return)
 {
 	char word[MAX_WORD_LENGTH], *word_ptr;
-	int label_index, word_len;
+	int word_len;
 	*error_return = 0;
 	word_len = read_word(line, word);
 	if (!word_len)
@@ -533,6 +554,7 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 			return words_added;
 		if (opcode == LEA_OPCODE && src_argument_addressing_type != ADDRESSING_TYPE_DIRECT)
 		{
+			printf("src_argument_addressing_type = %d\n", src_argument_addressing_type);
 			*error_return = ERROR_SOURCE_ADDRESSING_TYPE_INVALID;
 			return words_added;
 		}
@@ -541,6 +563,7 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 			*error_return = ERROR_SOURCE_ADDRESSING_TYPE_INVALID;
 			return words_added;
 		}
+		printf("src_argument = %s src_value = %d dst_argument = %s dst_value = %d\n", src_argument, src_value, dst_argument, dst_value);
 		/* addressing type validation passed, save into memory */
 		command_word_array_index = word_array_index - 1; /* command word was saved right before the first argument */
 		save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
@@ -629,6 +652,7 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 			*error_return = ERROR_DESTINATION_ADDRESSING_TYPE_INVALID;
 			return words_added;
 		}
+		printf("dst_argument = %s dst_value = %d\n", dst_argument, dst_value);
 		command_word_array_index = word_array_index - 1; /* command word was saved right before the first argument */
 		save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
 		if (dst_argument_addressing_type == ADDRESSING_TYPE_IMMEDIATE)
@@ -663,32 +687,30 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 int verify_label_syntax(char *line, char *end)
 {
 	char word[MAX_WORD_LENGTH];
-	int len;
+	int len, i;
 	if (strchr(end + 1, ':'))
 		return ERROR_LABEL_MULTIPLE_COLON;
 	*end = '\0';
+	line = skip_blanks(line);
 	if (!(len = read_word(line, word)))
 	{
 		*end = ':';
 		return ERROR_LABEL_EMPTY;
 	}
+	*end = ':';
 	if (!isalpha(word[0]))
-	{
-		*end = ':';
 		return ERROR_LABEL_NOT_BEGIN_WITH_ALPHA;
-	}
-	line = skip_blanks(line);
 	line += len;
 	if (line < end)
 	{
 		line = skip_blanks(line);
 		if (line != end)
-		{
-			*end = ':';
 			return ERROR_LABEL_MULTIPLE_WORDS_PRE_COLON;
-		}
+		return ERROR_LABEL_BLANKS_PRE_COLON;
 	}
-	*end = ':';
+	for (i = 0; i < len; ++i)
+		if (ispunct(word[i]))
+			return ERROR_LABEL_PUNCT;
 	return 0;
 }
 
@@ -960,10 +982,16 @@ void print_words(Word *word_array)
 	int i = 0;
 	while (word_array[i].code_address)
 	{
-		printf(	"addr %d value %d is_command %d\n", 
+		printf("addr %d value %d is_command %d\n", 
 			word_array[i].code_address, 
 			word_array[i].Data.data_word.value,
 			word_array[i].is_command
+		);
+		printf("opcode %d src_addressing_type %d dst_addressing_type %d are_type %d\n",
+			word_array[i].Data.command.opcode,
+			word_array[i].Data.command.src_addressing_type,
+			word_array[i].Data.command.dst_addressing_type,
+			word_array[i].Data.command.are_type
 		);
 		++i;
 	}
@@ -1032,37 +1060,57 @@ int second_scan_read_entry_declaration(char *label_name, Label *label_array)
 	return ERROR_ENTRY_LABEL_NOT_DECLARED;
 }
 
-int handle_addressing(char *word, int *src_value, int *error_return)
+int handle_addressing(char *word, int *word_value, int *error_return)
 {
-	char sign;
        	char *word_ptr = word;
-/*	if (*word_ptr == '#')
-	{
-		++word_ptr;
-		if (*word_ptr == '-' || *word_ptr == '+')
-		{
-			sign = *word_ptr == '-' ? -1 : 1;
-		}
-		else
-			sign = 1;
-	}
-	else if (*word_ptr == '*')
-	{
-		++word_ptr;
-		indirect_flag = 1;
-	}
-	else if (!isalpha(*word_ptr))
-		return ERROR_ILLEGAL_CHARACTER_FOR_ARGUMENT;
-	if (direct_flag)
-	{
-		if (*word_ptr == '-' || *word_ptr == '+')
-		{
-			sign = *word_ptr == '-' ? -1 : 1;
-		}
-		else
-			sign = 1;
-	}
-	while (isdigit(*word_ptr) || (!direct_flag && isalpha(*word_ptr))) */ /* don't read alphabetic characters when direct_flag is 1 */
-		++word_ptr;
+	if (*word_ptr == '#')
+		return read_immediate_addressing(word_ptr + 1, word_value, error_return);
+	if (*word_ptr == '*')
+		return read_indirect_register_addressing(word_ptr + 1, word_value, error_return);
+	if (strlen(word) == 2 && *word_ptr == 'r')
+		return read_direct_register_addressing(word_ptr, word_value, error_return);
+	return ADDRESSING_TYPE_DIRECT;
+}
+
+int read_indirect_register_addressing(char *word, int *word_value, int *error_return)
+{
+	if ((*word_value = get_register(word)) != -1)
+		return ADDRESSING_TYPE_INDIRECT_REGISTER;
+	*error_return = ERROR_INDIRECT_REGISTER_INVALID;
 	return 0;
+}
+
+int read_direct_register_addressing(char *word, int *word_value, int *error_return)
+{
+	if ((*word_value = get_register(word)) != -1)
+		return ADDRESSING_TYPE_DIRECT_REGISTER;
+	*error_return = ERROR_DIRECT_REGISTER_INVALID;
+	return 0;
+}
+
+int read_immediate_addressing(char *word, int *word_value, int *error_return)
+{
+	char sign = 1, *int_str = word;
+	int read_int = 0;
+	if (*int_str == '-')
+	{
+		sign = -1;
+		++int_str;
+	}
+	else if (*int_str == '+')
+		++int_str;
+	if (!isdigit(*int_str))
+	{
+		*error_return = ERROR_IMMEDIATE_INVALID;
+		return 0;
+	}
+	while (isdigit(*int_str))
+		read_int = read_int * 10 + (*int_str++ - '0');
+	if (*int_str)
+	{
+		*error_return = ERROR_IMMEDIATE_INVALID;
+		return 0;
+	}
+	*word_value = read_int * sign;
+	return ADDRESSING_TYPE_IMMEDIATE;
 }

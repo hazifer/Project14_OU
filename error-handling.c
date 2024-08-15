@@ -109,11 +109,17 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 		case ERROR_LABEL_DUPLICATE:
 			strcat(output_message, ": an already defined label detected in line ");
 			break;
+		case ERROR_LABEL_BLANKS_PRE_COLON:
+			strcat(output_message, ": blanks found before comma in label declaration in line ");
+			break;
+		case ERROR_LABEL_PUNCT:
+			strcat(output_message, ": a punctuation found in label declaration in line ");
+			break;
 		case ERROR_LABEL_NOT_BEGIN_WITH_ALPHA:
 			strcat(output_message, ": label begins with a non alphabetic character in line ");
 			break;
 		case ERROR_LABEL_MULTIPLE_COLON:
-			strcat(output_message, ": multiple colons found (possibly multiple label declarations) in line ");
+			strcat(output_message, ": multiple colons found in line ");
 			break;
 		case ERROR_LABEL_EMPTY:
 			strcat(output_message, ": empty label in line ");

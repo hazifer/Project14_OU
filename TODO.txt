@@ -5,6 +5,5 @@
 -	add registers as reserved words
 -	are_type for command ?
 -	show multiple errors per line? 
--	complete handle addressing
--	complete no arguments section in command read save arguments
 -	dive deeper into errors possible when reading words for commands
+-	set constant for 4 and 13 opcode (2 arguments, 1 argument)	
