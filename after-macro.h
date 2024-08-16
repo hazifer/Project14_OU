@@ -129,6 +129,8 @@ void increment_data_type_labels_address(Label *label_array, int address_incremen
 
 int skip_data_words(char *line, Word *word_array, int word_array_index, int command_type);
 
+int skip_command_argument_words(char *line, Word *word_array, int word_array_index, Command current_command);
+
 int second_read_entry_declaration(char *label_name, Label *label_array);
 
 /* save_label_data_type: sets a label's data type by testing against a word input 
