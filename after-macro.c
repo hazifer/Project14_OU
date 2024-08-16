@@ -90,8 +90,8 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 {
 	char line[MAX_CHARS_IN_LINE], *line_ptr, word[MAX_WORD_LENGTH], error_flag, command_type;
 	int word_array_index, error_return, word_len, line_number, label_index;
+	Command current_command;
 	word_array_index = line_number = error_flag = 0;
-	Data current_command;
 	while (fgets(line, MAX_CHARS_IN_LINE, fp))
 	{
 		/* second scan begins ONLY if the syntax for the commands is correct */
@@ -123,7 +123,7 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 		}
 		else if (current_command.src_addressing_type == ADDRESSING_TYPE_DIRECT || current_command.dst_addressing_type == ADDRESSING_TYPE_DIRECT)
 		{
-			current_command = word_array[word_array_index].Data.command;
+			current_command = (*word_array)[word_array_index].Data.command;
 			word_len = read_word(line_ptr, word);
 			if (current_command.src_addressing_type)
 				++word_array_index;
@@ -134,8 +134,8 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 				if (label_index == -1)
 					print_error(fname, line, ERROR_ENTRY_LABEL_NOT_DECLARED, line_number);
 				else
-					word_array[word_array_index].Data.data_word.value = (*label_array)[label_index].address;
-				line_ptr += len;
+					(*word_array)[word_array_index].Data.data_word.value = (*label_array)[label_index].address;
+				line_ptr += word_len;
 				line_ptr = skip_blanks(line_ptr);
 				line_ptr += 1; /* pointing to ',' */
 			}
@@ -147,8 +147,8 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 				if (label_index == -1)
 					print_error(fname, line, ERROR_ENTRY_LABEL_NOT_DECLARED, line_number);
 				else
-					word_array[word_array_index].Data.data_word.value = (*label_array)[label_index].address;
-				line_ptr += len;
+					(*word_array)[word_array_index].Data.data_word.value = (*label_array)[label_index].address;
+				line_ptr += word_len;
 				line_ptr = skip_blanks(line_ptr);
 				line_ptr += 1; /* pointing to ',' */
 			}
@@ -942,7 +942,7 @@ void print_labels(Label *label_array)
 	printf("Entry labels:\n");
 	while (label_array[i].address)
 	{
-		if (label_array[i].is_entry) {
+		if (label_array[i].label_type == TYPE_ENTRY) {
 			printf(	"name: %s addr: %d type: %d\n", 
 				label_array[i].name, 
 				label_array[i].address,
@@ -955,7 +955,7 @@ void print_labels(Label *label_array)
 	printf("Other labels:\n");
 	while (label_array[i].address)
 	{
-		if (!label_array[i].is_entry) {
+		if (label_array[i].label_type != TYPE_ENTRY) {
 			printf(	"name: %s addr: %d type: %d\n", 
 				label_array[i].name, 
 				label_array[i].address,
@@ -1054,7 +1054,7 @@ int second_scan_read_entry_declaration(char *label_name, Label *label_array)
 	int label_index = find_label_by_name(label_name, label_array);
 	if (label_index != -1)
 	{
-		label_array[label_index].is_entry = 1;
+		label_array[label_index].label_type = TYPE_ENTRY;
 		return 0;
 	}
 	return ERROR_ENTRY_LABEL_NOT_DECLARED;

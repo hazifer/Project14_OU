@@ -10,7 +10,6 @@ typedef struct Label {
 	char name[MAX_WORD_LENGTH];
 	unsigned int address				: 16;
 	unsigned int label_type				:  8;
-	unsigned int is_entry				:  1;
 } Label;
 
 /* ansi doesn't allow for char bitfields? causes a */
