@@ -51,6 +51,9 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 		case ERROR_EXTERN_LABEL_ALREADY_DECLARED:
 			strcat(output_message, ": illegal label name as input (already declared in code) in .extern declaration in line ");
 			break;
+		case ERROR_EXTERN_LABEL_NOT_DECLARED:
+			strcat(output_message, ": an undeclared label used in line ");
+			break;
 		case ERROR_INTERGER_LIST_ENDING_WITH_COMMA:
 			strcat(output_message, ": integer list ending with a comma in .data declaration in line ");
 			break;

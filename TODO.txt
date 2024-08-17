@@ -3,3 +3,5 @@
 		if exists, assuming lines started with non blank, check for a blank before that index - if exists, return an error
 -	are_type for command ?
 -	dive deeper into errors possible when reading words for commands
+-	extern declaration shouldn't save a word with an address, only the existence of it
+	usage should cause a label with an address to be added (later on in code)

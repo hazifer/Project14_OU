@@ -10,6 +10,7 @@ typedef struct Label {
 	char name[MAX_WORD_LENGTH];
 	unsigned int address				: 16;
 	unsigned int label_type				:  8;
+	unsigned int is_entry				:  1;
 } Label;
 
 /* ansi doesn't allow for char bitfields? causes a */
@@ -129,7 +130,7 @@ void increment_data_type_labels_address(Label *label_array, int address_incremen
 
 int skip_data_words(char *line, Word *word_array, int word_array_index, int command_type);
 
-int skip_command_argument_words(char *line, Word *word_array, int word_array_index, Command current_command);
+int skip_command_argument_words(int word_array_index, Command current_command);
 
 int second_read_entry_declaration(char *label_name, Label *label_array);
 
@@ -178,8 +179,11 @@ void reset_word_array_indices();
 void print_labels(Label *label_array);
 void print_words(Word *word_array);
 
-/* is_label_type_exist: reads the label_array and returns 1 uppon finding a label of the input type
+/* is_label_type_exist: reads the label_array and returns 1 upon finding a label of the input type
  * returns 0 otherwise */
 int is_label_type_exist(Label *label_array, int label_type);
+/* is_entry_type_label_exist: reads the label_array and returns 1 upon finding a label of type entry
+ * returns 0 otherwise */
+int is_entry_type_label_exist(Label *label_array);
 
 #endif /* AFTERMACRO_H */
