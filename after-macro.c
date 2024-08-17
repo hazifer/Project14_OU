@@ -33,7 +33,6 @@ int begin_assembler(char *input, char *after_label_fname, Word **word_array, Lab
 	}
 	printf("\tSuccess\n");
 	printf("Creating output files for input \"%s\"\n", input);
-	print_labels(*label_array);
 	return_value = create_object_file(input, *word_array);
 	if (return_value < 0)
 	{
@@ -228,9 +227,14 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 						error_return = save_label(word, label_array, word_array_index + BASE_IC_ADDRESS, &label_index);
 						(*label_array)[label_index].label_type = TYPE_EXTERN;
 						(*word_array)[word_array_index].Data.data_word.are_type = ADDRESSING_TYPE_E_SET;
+						(*word_array)[word_array_index].type = TYPE_ADDRESS;
 					}
 					else
+					{
 						(*word_array)[word_array_index].Data.data_word.value = (*label_array)[label_index].address;
+						(*word_array)[word_array_index].Data.data_word.are_type = ADDRESSING_TYPE_R_SET;
+						(*word_array)[word_array_index].type = TYPE_ADDRESS;
+					}
 				}
 				if (error_return)
 				{
@@ -255,9 +259,14 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 					error_return = save_label(word, label_array, word_array_index + BASE_IC_ADDRESS, &label_index);
 					(*label_array)[label_index].label_type = TYPE_EXTERN;
 					(*word_array)[word_array_index].Data.data_word.are_type = ADDRESSING_TYPE_E_SET;
+					(*word_array)[word_array_index].type = TYPE_ADDRESS;
 				}
 				else
+				{
 					(*word_array)[word_array_index].Data.data_word.value = (*label_array)[label_index].address;
+					(*word_array)[word_array_index].Data.data_word.are_type = ADDRESSING_TYPE_R_SET;
+					(*word_array)[word_array_index].type = TYPE_ADDRESS;
+				}
 			}
 			if (error_return)
 			{
@@ -328,7 +337,7 @@ int after_macro_save_words(char *line, int instruction_address, int *error_retur
 {
 	/* assume non blank at *line */
 	char command_code, *command_end_ptr;
-	int return_value;
+	int return_value, word_index;
 	command_end_ptr = line;
 	return_value = after_macro_verify_command_till_arguments(&command_end_ptr, &command_code);
 	if (return_value) {
@@ -343,11 +352,12 @@ int after_macro_save_words(char *line, int instruction_address, int *error_retur
 	if ((command_code >= 0 && command_code <= 15)) /* instruction type command */
 	{
 		/* save command word */
-		return_value = save_word(instruction_address++, (int)command_code, 1, word_array, NULL);
+		return_value = save_word(instruction_address++, (int)command_code, TYPE_COMMAND, word_array, &word_index);
 		if (return_value) {
 			*error_return = return_value;
 			return instruction_address;
 		}
+		(*word_array)[word_index].Data.command.are_type = ADDRESSING_TYPE_A_SET;
 		/* save argument words */
 		instruction_address += after_macro_save_command_arguments(command_end_ptr, instruction_address, command_code, word_array, error_return);
 	}
@@ -490,7 +500,7 @@ int read_data_declaration_data(char *line, int instruction_address, Word **word_
 			num = num * 10 + (*line -'0');
 			++line;
 		}
-		*error_return = save_word(instruction_address++, num * sign, 0, word_array, NULL);
+		*error_return = save_word(instruction_address++, num * sign, sign == 1 ? TYPE_DATA : TYPE_DATA_NEGATIVE, word_array, NULL);
 		if (*error_return)
 			break;
 		++integer_count;
@@ -536,7 +546,7 @@ int read_string_declaration_data(char *line, int instruction_address, Word **wor
 			break;
 		if (*line == '\\')
 			++line;
-		*error_return = save_word(instruction_address++, *line, 0, word_array, NULL);
+		*error_return = save_word(instruction_address++, *line, TYPE_DATA, word_array, NULL);
 		if (*error_return)
 			return instruction_address;
 		++line, ++char_count;
@@ -553,7 +563,7 @@ int read_string_declaration_data(char *line, int instruction_address, Word **wor
 		*error_return = ERROR_STRING_DECLARATION_CHARACTERS_AFTER_END_OF_QUOTES;
 		return char_count;
 	}
-	*error_return = save_word(instruction_address++, '\0', 0, word_array, NULL);
+	*error_return = save_word(instruction_address++, '\0', TYPE_DATA, word_array, NULL);
 	return char_count;
 }
 
@@ -660,10 +670,10 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 		save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
 		if (src_argument_addressing_type == ADDRESSING_TYPE_IMMEDIATE)
 		{
-			/* are_type for command ? */
 			word_array_dereference[command_word_array_index].Data.command.src_addressing_type = ADDRESSING_TYPE_IMMEDIATE;
 			word_array_dereference[word_array_index].Data.data_word.value = src_value;
 			word_array_dereference[word_array_index].Data.data_word.are_type = ADDRESSING_TYPE_A_SET;
+			word_array_dereference[word_array_index].type = TYPE_IMMEDIATE;
 		}
 		else if (src_argument_addressing_type == ADDRESSING_TYPE_DIRECT) /* no value for DIRECT ADDRESSING YET, and we don't know if label is internal or external */
 			word_array_dereference[command_word_array_index].Data.command.src_addressing_type = ADDRESSING_TYPE_DIRECT;
@@ -671,22 +681,24 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 		{
 			word_array_dereference[command_word_array_index].Data.command.src_addressing_type = ADDRESSING_TYPE_INDIRECT_REGISTER;
 			word_array_dereference[word_array_index].Data.complex_data_word.src_register = src_value;
-			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
+			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;
+			word_array_dereference[word_array_index].type = TYPE_REGISTER;
 		}
 		else /* src_argument_addressing_type == DIRECT_REGISTER_ADDRESSING */
 		{
 			word_array_dereference[command_word_array_index].Data.command.src_addressing_type = ADDRESSING_TYPE_DIRECT_REGISTER;
 			word_array_dereference[word_array_index].Data.complex_data_word.src_register = src_value;
 			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
+			word_array_dereference[word_array_index].type = TYPE_REGISTER;
 		}
 		/* dst addressing */
 		if (dst_argument_addressing_type == ADDRESSING_TYPE_IMMEDIATE)
 		{
-			/* are_type for command ? */
 			save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
 			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_IMMEDIATE;
 			word_array_dereference[word_array_index].Data.data_word.value = dst_value;
 			word_array_dereference[word_array_index].Data.data_word.are_type = ADDRESSING_TYPE_A_SET;
+			word_array_dereference[word_array_index].type = TYPE_IMMEDIATE;
 		}
 		else if (dst_argument_addressing_type == ADDRESSING_TYPE_DIRECT) /* no value for DIRECT ADDRESSING YET, and we don't know if label is internal or external */
 		{
@@ -699,7 +711,8 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 				save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
 			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_INDIRECT_REGISTER;
 			word_array_dereference[word_array_index].Data.complex_data_word.dst_register = dst_value;
-			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
+			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;
+			word_array_dereference[word_array_index].type = TYPE_REGISTER;
 		}
 		else /* dst_argument_addressing_type == DIRECT_REGISTER_ADDRESSING */
 		{
@@ -707,7 +720,8 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 				save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
 			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_DIRECT_REGISTER;
 			word_array_dereference[word_array_index].Data.complex_data_word.dst_register = dst_value;
-			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
+			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;
+			word_array_dereference[word_array_index].type = TYPE_REGISTER;
 		}
 		return words_added;
 	}
@@ -747,10 +761,10 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 		save_word(instruction_address + words_added++, 0, 0, word_array, &word_array_index);
 		if (dst_argument_addressing_type == ADDRESSING_TYPE_IMMEDIATE)
 		{
-			/* are_type for command ? */
 			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_IMMEDIATE;
 			word_array_dereference[word_array_index].Data.data_word.value = dst_value;
 			word_array_dereference[word_array_index].Data.data_word.are_type = ADDRESSING_TYPE_A_SET;
+			word_array_dereference[word_array_index].type = TYPE_IMMEDIATE;
 		}
 		else if (dst_argument_addressing_type == ADDRESSING_TYPE_DIRECT) /* no value for DIRECT ADDRESSING YET, and we don't know if label is internal or external */
 			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_DIRECT;
@@ -759,12 +773,14 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_INDIRECT_REGISTER;
 			word_array_dereference[word_array_index].Data.complex_data_word.dst_register = dst_value;
 			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
+			word_array_dereference[word_array_index].type = TYPE_REGISTER;
 		}
 		else /* dst_argument_addressing_type == DIRECT_REGISTER_ADDRESSING */
 		{
 			word_array_dereference[command_word_array_index].Data.command.dst_addressing_type = ADDRESSING_TYPE_DIRECT_REGISTER;
 			word_array_dereference[word_array_index].Data.complex_data_word.dst_register = dst_value;
 			word_array_dereference[word_array_index].Data.complex_data_word.are_type = ADDRESSING_TYPE_A_SET;	
+			word_array_dereference[word_array_index].type = TYPE_REGISTER;
 		}
 		return words_added;
 	}
@@ -849,7 +865,7 @@ int save_label(char *input_label_name, Label **label_array, int instruction_coun
 	return error_return;
 }
 
-int save_word(int instruction_count, int value, char is_command, Word **word_array, int *word_array_index)
+int save_word(int instruction_count, int value, char type, Word **word_array, int *word_array_index)
 {
 	static int next_word_array_index;
 	/*char word[MAX_WORD_LENGTH];*/
@@ -864,7 +880,7 @@ int save_word(int instruction_count, int value, char is_command, Word **word_arr
 	if (word_array_index)
 		*word_array_index = next_word_array_index;
 	word_array_dereference[next_word_array_index].code_address = instruction_count;
-	word_array_dereference[next_word_array_index].is_command = is_command;
+	word_array_dereference[next_word_array_index].type = type;
 	word_array_dereference[next_word_array_index].Data.data_word.value = value;
 	/* save value */
 	tmp_for_allocation = increment_word_array_index(word_array_dereference, ++next_word_array_index, &error_return);
@@ -1003,7 +1019,7 @@ Word * allocate_word_array_memory(Word *word_array, int *error_return)
 	for (; last_initialized < alloc_size; ++last_initialized)
 	{
 		temp_word_array[last_initialized].code_address = 0;
-		temp_word_array[last_initialized].is_command = 0;
+		temp_word_array[last_initialized].type = 0;
 		temp_word_array[last_initialized].Data.data_word.value = 0;
 		temp_word_array[last_initialized].Data.data_word.are_type= 0;
 	}
@@ -1110,10 +1126,10 @@ void print_words(Word *word_array)
 	int i = 0;
 	while (word_array[i].code_address)
 	{
-		printf("addr %d value %d is_command %d\n", 
+		printf("addr %d value %d type %d\n", 
 			word_array[i].code_address, 
 			word_array[i].Data.data_word.value,
-			word_array[i].is_command
+			word_array[i].type
 		);
 		printf("opcode %d src_addressing_type %d dst_addressing_type %d are_type %d\n",
 			word_array[i].Data.command.opcode,
@@ -1248,9 +1264,11 @@ int read_immediate_addressing(char *word, int *word_value, int *error_return)
 
 int create_object_file(char *input, Word *word_array)
 {
-	int i;
-	long fsize;
+	int i, current_block_bit_shift;
+	long fsize, mask, number_in_block, output_value;
 	char object_file_name[MAX_FILENAME_LENGTH], value_str[MAX_CHARS_IN_LINE];
+	Command current_command;
+	Print_format_word print_format_word;
 	FILE *object_file_ptr;
 	i = 0;
 	if (!word_array[i].code_address) /* no code case -> no .obj file */
@@ -1262,13 +1280,145 @@ int create_object_file(char *input, Word *word_array)
 		return ERROR_OBJECT_FILE_ACCESS;
 	while (word_array[i].code_address)
 	{
+		/* address */
 		itoa_base10(word_array[i].code_address, value_str);
 		fputs(value_str, object_file_ptr);
 		fputs("\t", object_file_ptr);
+		/* don't forget to pad ABOVE */
+/*
+		itoa_base10(word_array[i].Data.bits.value, value_str);
+		fputs(value_str, object_file_ptr);
+		fputs("\t", object_file_ptr);*/
+
+		if (word_array[i].type == TYPE_COMMAND)
+		{
+			current_command = word_array[i].Data.command;
+			output_value = convert_command_format_to_output_format(current_command);
+			/* puts 3 bits' values block by block 
+			 * from command structure */
+			mask = FIFTEEN_BIT_3_BITS_MSB_MASK;
+			current_block_bit_shift = 12;
+			number_in_block = output_value & mask;
+			number_in_block >>= current_block_bit_shift;
+			itoa_base10(number_in_block, value_str);
+			fputs(value_str, object_file_ptr);
+
+			mask = TWELVE_BIT_3_BITS_MSB_MASK;
+			current_block_bit_shift = 9;
+			number_in_block = output_value & mask;
+			number_in_block >>= current_block_bit_shift;
+			itoa_base10(number_in_block, value_str);
+			fputs(value_str, object_file_ptr);
+
+			mask = NINE_BIT_3_BITS_MSB_MASK;			
+			current_block_bit_shift = 6;
+			number_in_block = output_value & mask;
+			number_in_block >>= current_block_bit_shift;
+			itoa_base10(number_in_block, value_str);
+			fputs(value_str, object_file_ptr);
+
+			mask = SIX_BIT_3_BITS_MSB_MASK;			
+			current_block_bit_shift = 3;
+			number_in_block = output_value & mask;
+			number_in_block >>= current_block_bit_shift;
+			itoa_base10(number_in_block, value_str);
+			fputs(value_str, object_file_ptr);
+
+			mask = THREE_BIT_3_BITS_MSB_MASK;
+			current_block_bit_shift = 0;
+			number_in_block = output_value & mask;
+			number_in_block >>= current_block_bit_shift;
+			itoa_base10(number_in_block, value_str);
+			fputs(value_str, object_file_ptr);
+			fputs("\t", object_file_ptr);
+		}
+		else if (word_array[i].type == TYPE_REGISTER)
+		{
+			print_format_word = word_array[i].Data.print_format_word;
+			itoa_base10(print_format_word.field1, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field2, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field3, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field4, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field5, value_str);
+			fputs(value_str, object_file_ptr);
+			fputs("\t", object_file_ptr);
+		}
+		else if (word_array[i].type == TYPE_DATA)
+		{
+			/* field types */
+			print_format_word = word_array[i].Data.print_format_word;
+			itoa_base10(print_format_word.field5, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field4, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field3, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field2, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field1, value_str);
+			fputs(value_str, object_file_ptr);
+			fputs("\t", object_file_ptr);
+		}
+		else if (word_array[i].type == TYPE_DATA_NEGATIVE)
+		{
+			/* field types */
+/*			word_array[i].Data.data_word.value = ~word_array[i].Data.data_word.value;*/
+			/* field 4 acts as the sign extension to a 15 bit binary */
+			print_format_word = word_array[i].Data.print_format_word;
+			itoa_base10(print_format_word.field4, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field4, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field3, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field2, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field1, value_str);
+			fputs(value_str, object_file_ptr);
+			fputs("\t", object_file_ptr);
+		}
+		else /* TYPE_ADDRESS or TYPE_IMMEDIATE */
+		{
+			/* works for immediates, not for addresses */
+			/* field types */
+			print_format_word = word_array[i].Data.print_format_word;
+			itoa_base10(print_format_word.field4, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field3, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field2, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field1, value_str);
+			fputs(value_str, object_file_ptr);
+			itoa_base10(print_format_word.field5, value_str);
+			fputs(value_str, object_file_ptr);
+			fputs("\t", object_file_ptr);
+		}
+/*		 as val and are_type 
 		itoa_base10(word_array[i].Data.data_word.value, value_str);
 		fputs(value_str, object_file_ptr);
+		fputs("\t", object_file_ptr);
 		itoa_base10(word_array[i].Data.data_word.are_type, value_str);
 		fputs(value_str, object_file_ptr);
+		fputs("\t", object_file_ptr); */
+
+		/* as command 
+		itoa_base10(word_array[i].Data.command.opcode, value_str);
+		fputs(value_str, object_file_ptr);
+		fputs("\t", object_file_ptr);
+		itoa_base10(word_array[i].Data.command.src_addressing_type, value_str);
+		fputs(value_str, object_file_ptr);
+		fputs("\t", object_file_ptr);
+		itoa_base10(word_array[i].Data.command.dst_addressing_type, value_str);
+		fputs(value_str, object_file_ptr);
+		fputs("\t", object_file_ptr);
+		itoa_base10(word_array[i].Data.command.are_type, value_str);
+		fputs(value_str, object_file_ptr); */
+
 		fputs("\n", object_file_ptr);
 		++i;
 	}
@@ -1354,4 +1504,17 @@ int is_label_type_exist(Label *label_array, int label_type)
 		if (label_array[i++].label_type == label_type)
 			return 1;
 	return 0;
+}
+
+long convert_command_format_to_output_format(Command current_command)
+{
+	long value;
+	int opcode, src_addressing_type, dst_addressing_type, are_type;
+	opcode = current_command.opcode;
+	src_addressing_type = current_command.src_addressing_type;
+	dst_addressing_type = current_command.dst_addressing_type;
+	are_type = current_command.are_type;
+	value = (opcode << OPCODE_BIT_SHIFT) + (src_addressing_type << SRC_ADDRESSING_BIT_SHIFT) +
+		(dst_addressing_type << DST_ADDRESSING_BIT_SHIFT) + are_type;
+	return value;
 }

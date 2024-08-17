@@ -27,18 +27,28 @@ typedef struct Data_word {
 } Data_word;
 
 typedef struct Complex_data_word {
+	unsigned int 					:  6;
 	unsigned int src_register			:  3;
 	unsigned int dst_register			:  3;
 	unsigned int are_type				:  3;
 } Complex_data_word;
 
+typedef struct Print_format_word {
+	unsigned int field1				:  3;
+	unsigned int field2				:  3;
+	unsigned int field3				:  3;
+	unsigned int field4				:  3;
+	unsigned int field5				:  3;
+} Print_format_word;
+
 typedef struct Word {
 	unsigned int code_address			: 16; /* size is not affected if we make code_address 15 bits */
-	unsigned int is_command				:  1; /* and is_command 1 bit, either way Word is a size of 2 integers */
+	unsigned int type				:  8; /* and is_command 1 bit, either way Word is a size of 2 integers */
 	union Data {						      /* even when also trying to squeeze the Operation_build's size and value field to fit 16 bits */
 		Command command; 
 		Data_word data_word;
 		Complex_data_word complex_data_word;
+		Print_format_word print_format_word;
 	} Data;
 } Word;
 
@@ -185,5 +195,8 @@ int is_label_type_exist(Label *label_array, int label_type);
 /* is_entry_type_label_exist: reads the label_array and returns 1 upon finding a label of type entry
  * returns 0 otherwise */
 int is_entry_type_label_exist(Label *label_array);
+
+
+long convert_command_format_to_output_format(Command current_command);
 
 #endif /* AFTERMACRO_H */
