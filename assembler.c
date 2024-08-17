@@ -41,9 +41,10 @@ int main(int argc, char *argv[])
 			continue;
 		}
 		begin_assembler(argv[argc], after_macro_fname, &words, &labels);
+		/*
 		print_labels(labels);
 		printf("\nwords:\n");
-		print_words(words);
+		print_words(words);*/
 		if (labels)
 			free(labels);
 		if (words)

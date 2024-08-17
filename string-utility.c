@@ -85,6 +85,8 @@ int count_words_in_line(char *line, char *delimiters, const int max_word_length)
 
 char verify_not_reserved(char *word)
 {
+	char *registers[] = { "r0", "r1", "r2", "r3",
+			      "r4", "r5", "r6", "r7" };
 	char *reserved_words[] = { "mov", "cmp", "add", "sub", 
 				   "lea", "clr", "not", "inc", 
 				   "dec", "jmp", "bne", "red", 
@@ -94,6 +96,10 @@ char verify_not_reserved(char *word)
 	int arr_len = sizeof(reserved_words) / sizeof(char *);
 	for (arr_len--; arr_len >= 0; arr_len--)
 		if (!strcmp(reserved_words[arr_len], word))
+				return 0;
+	arr_len = sizeof(registers) / sizeof(char *);
+	for (arr_len--; arr_len >= 0; arr_len--)
+		if (!strcmp(registers[arr_len], word))
 				return 0;
 	return 1;
 }

@@ -35,7 +35,6 @@ int begin_assembler(char *input, char *after_label_fname, Word **word_array, Lab
 	printf("Creating output files for input \"%s\"\n", input);
 
 	return_value = create_object_file(input, *word_array);
-	printf("return_val = %d\n", return_value);
 	if (return_value < 0)
 	{
 		if (return_value == ERROR_OBJECT_FILE_ACCESS)
@@ -56,7 +55,6 @@ int begin_assembler(char *input, char *after_label_fname, Word **word_array, Lab
 	}
 
 	return_value = create_extern_file(input, *label_array);
-	printf("return_val = %d\n", return_value);
 	if (return_value < 0)
 	{
 		if (return_value == ERROR_EXTERN_FILE_ACCESS)
@@ -76,7 +74,6 @@ int begin_assembler(char *input, char *after_label_fname, Word **word_array, Lab
 	}
 
 	return_value = create_entry_file(input, *label_array);
-	printf("return_val = %d\n", return_value);
 	if (return_value < 0)
 	{
 		if (return_value == ERROR_ENTRY_FILE_ACCESS)
@@ -183,10 +180,10 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 		command_type = get_command_op_code(word);
 		line_ptr += word_len;
 		line_ptr = skip_blanks(line_ptr);
-		printf("line = %s", line);
+		/*printf("line = %s", line);
 		printf("command_type %d\n", command_type);
 		printf("command word = %s\n", word);
-		printf("before index = %d\n", word_array_index);
+		printf("before index = %d\n", word_array_index);*/
 		if (command_type == -1)
 		{
 			/* declaration types */
@@ -199,12 +196,17 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 				error_return = second_scan_read_entry_declaration(word, *label_array);
 				++word_array_index;
 			}
-			/* extern types were already handled in first read and are ignored!
-			 * they aren't saved as words, but as labels with TYPE_EXTERN label_type field */
+			else if (command_type == TYPE_EXTERN)
+			{
+				/* no need to verify an extern label's existence, it was done in the first scan */
+				read_word(line_ptr, word);
+				error_return = save_label(word, label_array, word_array_index, NULL);
+				++word_array_index;
+			}
 			continue;
 		}
 		current_command = (*word_array)[word_array_index++].Data.command;
-		printf("line: %s src_type %d dst_type %d\n", line, current_command.src_addressing_type, current_command.dst_addressing_type);
+		/*printf("line: %s src_type %d dst_type %d\n", line, current_command.src_addressing_type, current_command.dst_addressing_type);*/
 		if (current_command.src_addressing_type == ADDRESSING_TYPE_DIRECT || current_command.dst_addressing_type == ADDRESSING_TYPE_DIRECT)
 		{
 			if (current_command.src_addressing_type)
@@ -239,7 +241,7 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 		}
 		else /* skip number of words by command type */
 			word_array_index = skip_command_argument_words(line_ptr, *word_array, word_array_index, current_command);
-		printf("after index = %d\n", word_array_index);
+		/*printf("after index = %d\n", word_array_index);*/
 		if (error_return)
 		{
 			print_error(fname, line, error_return, line_number);
@@ -571,7 +573,7 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 	int word_len, word_array_index, command_word_array_index, src_value, dst_value;
 	Word *word_array_dereference = *word_array;
 	*error_return = 0;
-	if (opcode <= 4)
+	if (opcode <= TWO_ARGUMENT_OPCODE_UPPER_RANGE)
 	{
 		/* read registers / *registers and set values accordingly */
 		/* expect 2 arguments for commands with such opcode */
@@ -682,7 +684,7 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 		}
 		return words_added;
 	}
-	else if (opcode <= 13)
+	else if (opcode <= ONE_ARGUMENT_OPCODE_UPPER_RANGE)
 	{
 		/* expect 1 arguments for commands with such opcode */
 		if (*line == '\n')
@@ -1086,9 +1088,9 @@ char get_declaration_type(char *word)
 
 int skip_command_argument_words(char *line, Word *word_array, int word_array_index, Command current_command)
 {
-	if (current_command.opcode >= 14) /* no argument commands */
+	if (current_command.opcode > ONE_ARGUMENT_OPCODE_UPPER_RANGE) /* no argument commands */
 		return word_array_index;
-	if (current_command.opcode >= 5) /* one argument commands */
+	if (current_command.opcode > TWO_ARGUMENT_OPCODE_UPPER_RANGE) /* one argument commands */
 		return word_array_index + 1;
 	/* two argument commands */
 	if ((current_command.src_addressing_type == ADDRESSING_TYPE_DIRECT_REGISTER || current_command.src_addressing_type == ADDRESSING_TYPE_INDIRECT_REGISTER)
@@ -1198,12 +1200,14 @@ int create_object_file(char *input, Word *word_array)
 	long fsize;
 	char object_file_name[MAX_FILENAME_LENGTH], value_str[MAX_CHARS_IN_LINE];
 	FILE *object_file_ptr;
+	i = 0;
+	if (!word_array[i].code_address) /* no code case -> no .obj file */
+		return 0;
 	strcpy(object_file_name, input);
 	strcat(object_file_name, ".obj");
 	object_file_ptr = fopen(object_file_name, "w");
 	if (!object_file_ptr)
 		return ERROR_OBJECT_FILE_ACCESS;
-	i = 0;
 	while (word_array[i].code_address)
 	{
 		itoa_base10(word_array[i].code_address, value_str);
@@ -1227,12 +1231,13 @@ int create_extern_file(char *input, Label *label_array)
 	long fsize;
 	char extern_file_name[MAX_FILENAME_LENGTH], value_str[MAX_CHARS_IN_LINE];
 	FILE *extern_file_ptr;
+	if (!is_label_type_exist(label_array, TYPE_EXTERN)) /* no extern labels exist */
+		return 0;
 	strcpy(extern_file_name, input);
 	strcat(extern_file_name, ".ext");
 	extern_file_ptr = fopen(extern_file_name, "w");
 	if (!extern_file_ptr)
 		return ERROR_EXTERN_FILE_ACCESS;
-	i = 0;
 	while (label_array[i].address)
 	{
 		if (label_array[i].label_type == TYPE_EXTERN)
@@ -1256,6 +1261,8 @@ int create_entry_file(char *input, Label *label_array)
 	long fsize;
 	char entry_file_name[MAX_FILENAME_LENGTH], value_str[MAX_CHARS_IN_LINE];
 	FILE *entry_file_ptr;
+	if (!is_label_type_exist(label_array, TYPE_ENTRY)) /* no entry labels exist */
+		return 0;
 	strcpy(entry_file_name, input);
 	strcat(entry_file_name, ".ent");
 	entry_file_ptr = fopen(entry_file_name, "w");
@@ -1277,4 +1284,13 @@ int create_entry_file(char *input, Label *label_array)
 	fsize = ftell(entry_file_ptr);
 	fclose(entry_file_ptr);
 	return fsize;
+}
+
+int is_label_type_exist(Label *label_array, int label_type)
+{
+	int i = 0;
+	while (label_array[i].address)
+		if (label_array[i++].label_type == label_type)
+			return 1;
+	return 0;
 }

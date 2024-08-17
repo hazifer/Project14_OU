@@ -101,6 +101,8 @@ enum {
 	BNE_OPCODE = 				10,
 	PRN_OPCODE = 				12,
 	JSR_OPCODE = 				13,
+	TWO_ARGUMENT_OPCODE_UPPER_RANGE =	4,
+	ONE_ARGUMENT_OPCODE_UPPER_RANGE =	13,
 
 	/* opcodes are 				0-15 */
 	/* code/label types are kept in 8 bit value range */

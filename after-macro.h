@@ -178,4 +178,8 @@ void reset_word_array_indices();
 void print_labels(Label *label_array);
 void print_words(Word *word_array);
 
+/* is_label_type_exist: reads the label_array and returns 1 uppon finding a label of the input type
+ * returns 0 otherwise */
+int is_label_type_exist(Label *label_array, int label_type);
+
 #endif /* AFTERMACRO_H */
