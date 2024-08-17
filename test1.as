@@ -2,7 +2,7 @@
 .extern	fn1
 MAIN:	add r3, LIST
 	jsr fn1
-LOOP:	prn	#48
+LOOP:	prn #48
 	macr mmacr
 	cmp r3, #-6
 	bne END

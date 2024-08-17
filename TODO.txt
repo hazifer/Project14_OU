@@ -2,6 +2,6 @@
 		strstr lookup of each declared macroname against words in line
 		if exists, assuming lines started with non blank, check for a blank before that index - if exists, return an error
 -	dive deeper into errors possible when reading words for commands
--	extern declaration shouldn't save a word with an address, only the existence of it
-	usage should cause a label with an address to be added (later on in code)
--	are_type for EXTERNAL OR INTERNAL!!
+	characters after arguments, seperated with comma, commas, multiple words more than needed etc
+-	cmp r3, -6 prints wrong error (about a non declared label)
+-	prioriotize outputting a comma at end of line if exists
