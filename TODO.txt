@@ -7,5 +7,5 @@
 -	prioriotize outputting a comma at end of line if exists
 -	sign extension of field 4 in negative data types is wrong - should only extend the msb of field 4
 -	handle max length inputs! lines, words
--	double label declaration in different entry lines
--	label in entry or extern causes assembler exit
+-	label in entry or extern causes assembler exit - it shouldn't be declared at all
+	same for double label declaration in different entry lines issue
