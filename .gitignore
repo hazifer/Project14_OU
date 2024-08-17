@@ -2,3 +2,8 @@
 *.o
 #ignore compiled files
 *.out
+
+#ignore code output files
+*.obj
+*.ent
+*.ext
