@@ -1,25 +1,100 @@
 #include "after-macro.h"
 
-int begin_assembler(char *fname, char *after_label_fname, Word **word_array, Label **label_array)
+int begin_assembler(char *input, char *after_label_fname, Word **word_array, Label **label_array)
 {
-	int first_scan_return_value, second_scan_return_value;
+	int return_value;
+	char error_flag = 0;
 	FILE *fp = fopen(after_label_fname, "r");
 	if (!fp)
+	{
+		printf("Couldn't open file %s, terminating program for input %s\n\n", after_label_fname, input);
 		return 1;
+	}
 	/* begin first scan */
-	first_scan_return_value = first_after_macro_scan(fp, after_label_fname, word_array, label_array);
-	if (first_scan_return_value == ERROR_TERMINATE_ASSEMBLER)
+	printf("Beginning code syntax verification for input \"%s\"\n", input);
+	return_value = first_after_macro_scan(fp, after_label_fname, word_array, label_array);
+	if (!return_value || return_value == ERROR_TERMINATE_ASSEMBLER)
+	{
+		printf("\tErrors were found for input \"%s\", no output files are created\n\n", input);
 		return 1;
-	if (!first_scan_return_value)
-		return 1;
+	}
+	printf("\tSuccess\n");
 	/* update addresses for data_type labels */
-	increment_data_type_labels_address(*label_array, first_scan_return_value);
+	increment_data_type_labels_address(*label_array, return_value);
 	/* begin second scan */
+	printf("Beginning labels' addressing verification for input \"%s\"\n", input);
 	fseek(fp, 0, SEEK_SET);
-	second_scan_return_value = second_after_macro_scan(fp, after_label_fname, word_array, label_array);
+	return_value = second_after_macro_scan(fp, after_label_fname, word_array, label_array);
 	fclose(fp);
-	/* in case either scans fail, we don't create the output files */
-	return 0;
+	if (return_value)
+	{
+		printf("\tErrors were found, no output files are created\n\n");
+		return 1;
+	}
+	printf("\tSuccess\n");
+	printf("Creating output files for input \"%s\"\n", input);
+
+	return_value = create_object_file(input, *word_array);
+	printf("return_val = %d\n", return_value);
+	if (return_value < 0)
+	{
+		if (return_value == ERROR_OBJECT_FILE_ACCESS)
+			print_error(input, NULL, return_value, 0);
+		else
+			printf("\tError: file size unknown for object file created \"%s.obj\"\n", input);
+		error_flag = 1;
+	}
+	else
+	{
+		if (return_value > 0)
+		{
+			error_flag = 1;
+			printf("\tSuccessfully created object file \"%s.obj\"\n", input);
+		}
+		else
+			printf("\tEmpty code file. No object file created for input \"%s\"\n", input);
+	}
+
+	return_value = create_extern_file(input, *label_array);
+	printf("return_val = %d\n", return_value);
+	if (return_value < 0)
+	{
+		if (return_value == ERROR_EXTERN_FILE_ACCESS)
+		{
+			error_flag = 1;
+			print_error(input, NULL, return_value, 0);
+		}
+		else
+			printf("\tError: file size unknown for extern file created \"%s.ext\"\n", input);
+	}
+	else
+	{
+		if (return_value > 0)
+			printf("\tSuccessfully created extern file \"%s.ext\"\n", input);
+		else
+			printf("\tNo extern labels declared. No extern file created for input \"%s\"\n", input);
+	}
+
+	return_value = create_entry_file(input, *label_array);
+	printf("return_val = %d\n", return_value);
+	if (return_value < 0)
+	{
+		if (return_value == ERROR_ENTRY_FILE_ACCESS)
+		{
+			error_flag = 1;
+			print_error(input, NULL, return_value, 0);
+		}
+		else
+			printf("\tError: file size unknown for entry file created \"%s.ent\"\n", input);
+	}
+	else
+	{
+		if (return_value > 0)
+			printf("\tSuccessfully created entry file \"%s.ent\"\n", input);
+		else
+			printf("\tNo entry labels declared. No entry file created for input \"%s\"\n", input);
+	}
+	return error_flag;
 }
 
 int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **label_array)
@@ -108,10 +183,10 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 		command_type = get_command_op_code(word);
 		line_ptr += word_len;
 		line_ptr = skip_blanks(line_ptr);
-		/*printf("line = %s", line);
+		printf("line = %s", line);
 		printf("command_type %d\n", command_type);
 		printf("command word = %s\n", word);
-		printf("before index = %d\n", word_array_index);*/
+		printf("before index = %d\n", word_array_index);
 		if (command_type == -1)
 		{
 			/* declaration types */
@@ -129,6 +204,7 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 			continue;
 		}
 		current_command = (*word_array)[word_array_index++].Data.command;
+		printf("line: %s src_type %d dst_type %d\n", line, current_command.src_addressing_type, current_command.dst_addressing_type);
 		if (current_command.src_addressing_type == ADDRESSING_TYPE_DIRECT || current_command.dst_addressing_type == ADDRESSING_TYPE_DIRECT)
 		{
 			if (current_command.src_addressing_type)
@@ -163,7 +239,7 @@ int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **la
 		}
 		else /* skip number of words by command type */
 			word_array_index = skip_command_argument_words(line_ptr, *word_array, word_array_index, current_command);
-		/*printf("after index = %d\n", word_array_index);*/
+		printf("after index = %d\n", word_array_index);
 		if (error_return)
 		{
 			print_error(fname, line, error_return, line_number);
@@ -486,20 +562,6 @@ int after_macro_verify_command_till_arguments(char **line, char *command_code)
 	return 0;
 }
 
-	/* addressing_types:
-	 * IMMEDIATE_ADDRESSING - '#' need extra word. set are_type to 0b100 (A set) and value in 12 bit 2's complement
-	 * 	set addressing_type in command for src/dst to 0b0001 (type 0)
-	 * DIRECT_ADDRESSING - 'LABEL' ignore in first scan, need extra word. set are_type to 0b010 (R set) for internal label OR 0b001 (E set) for external label
-	 * 	value is address in 12 bits unsigned
-	 * 	set addressing_type in command for src/dst to 0b0010 (type 1)
-	 * INDIRECT_REGISTER_ADDRESSING - '*rX' need extra word, if both src and dst are '*rX', only one word needed.
-	 * 	set are_type to 0b100 (A set)
-	 * 	destination register is set in bits 3-5, source register is set in bits 6-8
-	 * 	set addressing_type in command for src/dst to 0b0100 (type 2)
-	 * DIRECT_REGISTER_ADDRESSING - 'rX' need extra word, if both src and dst are 'rX', only one word needed.
-	 * 	set are_type to 0b100 (A set)
-	 * 	destination register is set in bits 3-5, source register is set in bits 6-8
-	 * 	set addressing_type in command for src/dst to 0b1000 (type 3) */
 int after_macro_save_command_arguments(char *line, int instruction_address, char opcode, Word **word_array, int *error_return)
 {
 	/* assume line points to a non ',' character */
@@ -1029,8 +1091,8 @@ int skip_command_argument_words(char *line, Word *word_array, int word_array_ind
 	if (current_command.opcode >= 5) /* one argument commands */
 		return word_array_index + 1;
 	/* two argument commands */
-	if ((current_command.src_addressing_type == DIRECT_REGISTER_ADDRESSING || current_command.src_addressing_type == INDIRECT_REGISTER_ADDRESSING)
-	    && (current_command.dst_addressing_type == DIRECT_REGISTER_ADDRESSING || current_command.dst_addressing_type == INDIRECT_REGISTER_ADDRESSING))
+	if ((current_command.src_addressing_type == ADDRESSING_TYPE_DIRECT_REGISTER || current_command.src_addressing_type == ADDRESSING_TYPE_INDIRECT_REGISTER)
+	    && (current_command.dst_addressing_type == ADDRESSING_TYPE_DIRECT_REGISTER || current_command.dst_addressing_type == ADDRESSING_TYPE_INDIRECT_REGISTER))
 		return word_array_index + 1;
 	return word_array_index + 2;
 }
@@ -1038,8 +1100,6 @@ int skip_command_argument_words(char *line, Word *word_array, int word_array_ind
 int skip_data_words(char *line, Word *word_array, int word_array_index, int command_type)
 {
 	/* assume line is a properly syntax .string or .data declaration data portion */
-	char string[MAX_CHARS_IN_LINE];
-	int word_len;
 	if (command_type == TYPE_STRING)
 	{
 		++line; /* point past '"' */
@@ -1060,7 +1120,7 @@ int skip_data_words(char *line, Word *word_array, int word_array_index, int comm
 	else
 	{
 		++word_array_index; /* input is not empty, we handled such case in the first read */	
-		while (line = strchr(line, ','))
+		while ((line = strchr(line, ',')))
 			++line, ++word_array_index;
 	}
 	return word_array_index;
@@ -1130,4 +1190,91 @@ int read_immediate_addressing(char *word, int *word_value, int *error_return)
 	}
 	*word_value = read_int * sign;
 	return ADDRESSING_TYPE_IMMEDIATE;
+}
+
+int create_object_file(char *input, Word *word_array)
+{
+	int i;
+	long fsize;
+	char object_file_name[MAX_FILENAME_LENGTH], value_str[MAX_CHARS_IN_LINE];
+	FILE *object_file_ptr;
+	strcpy(object_file_name, input);
+	strcat(object_file_name, ".obj");
+	object_file_ptr = fopen(object_file_name, "w");
+	if (!object_file_ptr)
+		return ERROR_OBJECT_FILE_ACCESS;
+	i = 0;
+	while (word_array[i].code_address)
+	{
+		itoa_base10(word_array[i].code_address, value_str);
+		fputs(value_str, object_file_ptr);
+		fputs("\t", object_file_ptr);
+		itoa_base10(word_array[i].Data.data_word.value, value_str);
+		fputs(value_str, object_file_ptr);
+		itoa_base10(word_array[i].Data.data_word.are_type, value_str);
+		fputs(value_str, object_file_ptr);
+		fputs("\n", object_file_ptr);
+		++i;
+	}
+	fsize = ftell(object_file_ptr);
+	fclose(object_file_ptr);
+	return fsize;
+}
+
+int create_extern_file(char *input, Label *label_array)
+{
+	int i;
+	long fsize;
+	char extern_file_name[MAX_FILENAME_LENGTH], value_str[MAX_CHARS_IN_LINE];
+	FILE *extern_file_ptr;
+	strcpy(extern_file_name, input);
+	strcat(extern_file_name, ".ext");
+	extern_file_ptr = fopen(extern_file_name, "w");
+	if (!extern_file_ptr)
+		return ERROR_EXTERN_FILE_ACCESS;
+	i = 0;
+	while (label_array[i].address)
+	{
+		if (label_array[i].label_type == TYPE_EXTERN)
+		{
+			fputs(label_array[i].name, extern_file_ptr);
+			fputs("\t", extern_file_ptr);
+			itoa_base10(label_array[i].address, value_str);
+			fputs(value_str, extern_file_ptr);
+			fputs("\n", extern_file_ptr);
+		}
+		++i;
+	}
+	fsize = ftell(extern_file_ptr);
+	fclose(extern_file_ptr);
+	return fsize;
+}
+
+int create_entry_file(char *input, Label *label_array)
+{
+	int i;
+	long fsize;
+	char entry_file_name[MAX_FILENAME_LENGTH], value_str[MAX_CHARS_IN_LINE];
+	FILE *entry_file_ptr;
+	strcpy(entry_file_name, input);
+	strcat(entry_file_name, ".ent");
+	entry_file_ptr = fopen(entry_file_name, "w");
+	if (!entry_file_ptr)
+		return ERROR_ENTRY_FILE_ACCESS;
+	i = 0;
+	while (label_array[i].address)
+	{
+		if (label_array[i].label_type == TYPE_ENTRY)
+		{
+			fputs(label_array[i].name, entry_file_ptr);
+			fputs("\t", entry_file_ptr);
+			itoa_base10(label_array[i].address, value_str);
+			fputs(value_str, entry_file_ptr);
+			fputs("\n", entry_file_ptr);
+		}
+		++i;
+	}
+	fsize = ftell(entry_file_ptr);
+	fclose(entry_file_ptr);
+	return fsize;
 }

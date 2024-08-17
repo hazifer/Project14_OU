@@ -161,6 +161,10 @@ int is_word_label(char *word, Label **label_array);
 /* receives a possible op word, and returns it's decimal value opcode if it's an assembly word or -1 if it isn't */
 char get_command_op_code(char *op);
 
+int create_object_file(char *input, Word *word_array);
+int create_extern_file(char *input, Label *label_array);
+int create_entry_file(char *input, Label *label_array);
+
 Label * init_label_array_memory();
 Label * allocate_label_array_memory(Label *label_array, int *error_return);
 Label * increment_label_array_index(Label *label_array, int next_label_index, int *error_return);

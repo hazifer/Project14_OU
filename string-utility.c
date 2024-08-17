@@ -4,6 +4,11 @@ void itoa_base10(int n, char *n_str)
 {
 	/* assumes enough memory for n_str, assumes n >= 0 */
 	int i = 0;
+	if (n == 0)
+	{
+		*(n_str) = '0';
+		++i;
+	}
 	while (n)
 	{
 		*(n_str + i) = n % 10 + '0';

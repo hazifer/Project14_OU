@@ -22,11 +22,11 @@ int main(int argc, char *argv[])
 		if (error_return)
 			continue;
 		expand_macros(fname, after_macro_fname, &error_return);
-		free(fname);
 		if (error_return)
 		{
 			continue;
 		}
+		printf("\tSuccess\n");
 		labels = init_label_array_memory();
 		if (!labels)
 		{
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 			free(labels);
 			continue;
 		}
-		begin_assembler(fname, after_macro_fname, &words, &labels);
+		begin_assembler(argv[argc], after_macro_fname, &words, &labels);
 		print_labels(labels);
 		printf("\nwords:\n");
 		print_words(words);
@@ -49,5 +49,6 @@ int main(int argc, char *argv[])
 		if (words)
 			free(words);
 	}
+	free(fname);
 	return 0;
 }
