@@ -1,11 +1,6 @@
--	in lines with macroname for expansion, check before the line: (expand_macros_handle_command_state)
-		strstr lookup of each declared macroname against words in line
-		if exists, assuming lines started with non blank, check for a blank before that index - if exists, return an error
+-	macro expansion end with ',' prints "wrong" error (unknown command)
 -	dive deeper into errors possible when reading words for commands
 	characters after arguments, seperated with comma, commas, multiple words more than needed etc
 -	cmp r3, -6 prints wrong error (about a non declared label)
--	prioriotize outputting a comma at end of line if exists
--	sign extension of field 4 in negative data types is wrong - should only extend the msb of field 4
+	don't fallback to non declared labels as error
 -	handle max length inputs! lines, words
--	label in entry or extern causes assembler exit - it shouldn't be declared at all
-	same for double label declaration in different entry lines issue

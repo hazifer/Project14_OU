@@ -114,7 +114,11 @@ int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **lab
 				return ERROR_TERMINATE_ASSEMBLER;
 			}
 			else if (error_return == WARN_LABEL_IN_ENTRY_EXTERN_LINE)
+			{
+				print_error(fname, line, error_return, line_number);
+				error_return = 0; /* to not cause a program stop */
 				--instruction_count;
+			}
 			if (error_return)
 			{
 				error_flag = 1;
@@ -638,16 +642,7 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 			return words_added;
 		}
 		line += word_len;
-		line = skip_blanks(line);
-		/* FIX THIS */
-		if (*line != '\n')
-		{
-			if (*line == ',')
-				*error_return = ERROR_COMMA_AFTER_ARGUMENTS;
-			else
-				*error_return = ERROR_BLANK_BETWEEN_ARGUMENTS;
-			return words_added;
-		}
+		*error_return = handle_syntax_post_relevant_arguments(line);
 		/* keep the data storing of words till after the simpler syntax checks */
 		src_argument_addressing_type = handle_addressing(src_argument, &src_value, error_return);
 		if (*error_return) /* *error_return holds errors for the source word's syntax such as punctuations' existence etc */
@@ -1367,9 +1362,13 @@ int create_object_file(char *input, Word *word_array)
 		{
 			/* field types */
 /*			word_array[i].Data.data_word.value = ~word_array[i].Data.data_word.value;*/
-			/* field 4 acts as the sign extension to a 15 bit binary */
+			/* field 4's msb acts as the sign extension to a 15 bit binary */
 			print_format_word = word_array[i].Data.print_format_word;
-			itoa_base10(print_format_word.field4, value_str);
+			mask = 4; /* 0b100 mask */
+			if ((print_format_word.field4 & mask) == mask)
+				strcpy(value_str, "7");
+			else
+				strcpy(value_str, "0");
 			fputs(value_str, object_file_ptr);
 			itoa_base10(print_format_word.field4, value_str);
 			fputs(value_str, object_file_ptr);
@@ -1517,4 +1516,37 @@ long convert_command_format_to_output_format(Command current_command)
 	value = (opcode << OPCODE_BIT_SHIFT) + (src_addressing_type << SRC_ADDRESSING_BIT_SHIFT) +
 		(dst_addressing_type << DST_ADDRESSING_BIT_SHIFT) + are_type;
 	return value;
+}
+
+int handle_syntax_post_relevant_arguments(char *line)
+{
+	char *end_of_line;
+	if (*line == '\n')
+		return 0;
+	end_of_line = strchr(line, '\n');
+	if (!end_of_line)
+		return ERROR_LINE_TOO_LONG;
+	--end_of_line;
+	while (*end_of_line == ' ' || *end_of_line == '\t')
+		--end_of_line;
+	if (*end_of_line == ',')
+		return ERROR_COMMA_AFTER_ARGUMENTS;
+	if (*line == ' ' || *line == '\t')
+	{
+		line = skip_blanks(line);
+		if (*line == ',')
+			return ERROR_CONSEQUTIVE_COMMAS;
+		if (*line != '\n')
+			return ERROR_BLANK_BETWEEN_ARGUMENTS;
+		return 0;
+	}
+	if (*line == ',')
+	{
+		++line;
+		line = skip_blanks(line);
+		if (*line == ',')
+			return ERROR_CONSEQUTIVE_COMMAS;
+		return ERROR_TOO_MANY_ARGUMENTS;
+	}
+	return 0;
 }

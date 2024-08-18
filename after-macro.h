@@ -134,6 +134,8 @@ int first_read_extern_declaration_data(char *line, int instruction_address, Labe
  * ERROR_PROGRAM_MEMORY_ALLOCATION */
 int save_label(char *input_label_name, Label **label_array, int instruction_address, int *stored_label_index);
 
+int handle_syntax_post_relevant_arguments(char *line);
+
 int save_word(int instruction_count, int value, char is_command, Word **word_array, int *word_array_index);
 
 void increment_data_type_labels_address(Label *label_array, int address_increment);

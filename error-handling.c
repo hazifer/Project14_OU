@@ -19,10 +19,13 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 	switch(error_type)
 	{	
 		case WARN_LABEL_IN_ENTRY_EXTERN_LINE:
-			strcat(output_message, ": label ignored in .extern or .entry declaration in line ");
+			strcat(output_message, ": label preceding .extern or .entry declarations are ignored in line ");
 			break;
 		case ERROR_ENTRY_CHARACTERS_AFTER_LABEL:
 			strcat(output_message, ": characters detected after label in .entry declaration in line ");
+			break;
+		case ERROR_CONSEQUTIVE_COMMAS:
+			strcat(output_message, ": consequtive commas detected in line ");
 			break;
 		case ERROR_ENTRY_EMPTY_LABEL:
 			strcat(output_message, ": empty label as input in .entry declaration in line ");
