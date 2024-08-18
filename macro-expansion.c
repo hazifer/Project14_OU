@@ -32,26 +32,21 @@ char * handle_filename_extension(char *filename, char extension[], int *error_re
 	}
 	fclose(fp);
 	*error_return = 0;
-	/*
-	(*out)->message_type = SUCCESS;
-	strcpy((*out)->message, SUCCESS_BASE_STRING);
-	strcat((*out)->message, extended_filename);
-	strcat((*out)->message, "\n");*/
 	return extended_filename;
 }
 
 int expand_macros(char *sfname, char *dfname_holder, int *error_return)
 {
 	FILE *fpin, *fpout;
-	char *dfname, *line, *tmp;
+	char *dfname, line[MAX_CHARS_IN_LINE], *tmp, error_flag;
 	Macro *macro_array = NULL;
-	*error_return = 0;
+	*error_return = error_flag = 0;
 	/* memory allocation, file access, and error handling */
 	dfname = (char *)malloc(strlen(sfname) * sizeof(char));
 	if (!dfname)
 	{
 		print_error(sfname, NULL, ERROR_DESTINATION_FILE_MEMORY_ALLOCATION, 0);
-	/* free command to be used where we need */
+		*error_return = ERROR_DESTINATION_FILE_MEMORY_ALLOCATION;
 		return 1;
 	}
 	strcpy(dfname, sfname);
@@ -63,59 +58,64 @@ int expand_macros(char *sfname, char *dfname_holder, int *error_return)
 	if (!fpin)
 	{
 		print_error(sfname, NULL, ERROR_SOURCE_FILE_ACCESS, 0);
-	/* free command to be used where we need */
+		*error_return = ERROR_SOURCE_FILE_ACCESS;
+		free(dfname);
 		return 1;
 	}
 	fpout = fopen(dfname, "w");
 	if (!fpout)
 	{
+		free(dfname);
+		fclose(fpin);
 		print_error(dfname, NULL, ERROR_DESTINATION_FILE_ACCESS, 0);
-	/* free command to be used where we need */
-		return 1;
-	}
-	line = (char *)malloc(MAX_CHARS_IN_LINE * sizeof(char));
-	if (!line)
-	{
-		print_error(sfname, line, ERROR_PROGRAM_MEMORY_ALLOCATION, 0);
-	/* free command to be used where we need */
+		*error_return = ERROR_DESTINATION_FILE_ACCESS;
 		return 1;
 	}
 	macro_array = init_macro_array_memory();
-	if (*error_return)
+	if (!macro_array)
 	{
+		free(dfname);
+		fclose(fpin);
+		fclose(fpout);
 		if (*error_return == ERROR_EXCEEDED_MACRO_ARRAY_LIMIT)
 		{
 			print_error(sfname, line, ERROR_EXCEEDED_MACRO_ARRAY_LIMIT, 0);
-	/* free command to be used where we need */
 			return 1;
 		}
 		print_error(sfname, line, ERROR_PROGRAM_MEMORY_ALLOCATION, 0);
-	/* free command to be used where we need */
+		*error_return = ERROR_PROGRAM_MEMORY_ALLOCATION;
 		return 1;
 	}
-	expand_macros_memory_allocated(sfname, dfname, fpin, fpout, line, &macro_array, error_return);
+	error_flag = expand_macros_memory_allocated(sfname, dfname, fpin, fpout, line, &macro_array, error_return);
 	/* sfname is freed in main */
-	if (*error_return)
+	if (error_flag)
 		remove(dfname);
-	/* free command to be used where we need */
 	free(dfname);
 	fclose(fpin);
 	fclose(fpout);
-	free(line);
 	free(macro_array);
-	return 0;
+	*error_return = error_flag;
+	return error_flag;
 }
 
 int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE *fpout, char *line, Macro **macro_array, int *error_return)
 {
-	char *li; /* line indexe */
+	char *li, error_flag;
 	Macro *temp_macro_array; /* for future macro_array memory reallocations */
-	int  state = STATE_COMMAND, return_value, label_flag, line_number, next_macro_index;
-	line_number = next_macro_index = 0;
-	while (fgets(line, MAX_CHARS_IN_LINE, fpin) && (li = expand_macros_handle_label(line, fpout)))
+	int state = STATE_COMMAND, return_value, label_flag, line_number, next_macro_index;
+	line_number = next_macro_index = error_flag = 0;
+	while (fgets(line, MAX_CHARS_IN_LINE + 1, fpin))
 	{
 		++line_number;
-		/* line was read, and li is not NULL */
+		if (strlen(line) == MAX_CHARS_IN_LINE)
+		{
+			line[MAX_CHARS_IN_LINE + 1] = '\0';
+			error_flag = 1;
+			print_error(sfname, line, ERROR_LINE_TOO_LONG, line_number);
+			skip_line(line, fpin);
+			continue;
+		}
+		li = expand_macros_handle_label(line, fpout);
 		label_flag = 0;
 		if (*li == ';' || *li == '\n')
 		{
@@ -144,6 +144,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 			{
 				print_error(sfname, line, return_value, line_number);
 				*error_return = return_value;
+				error_flag = 1;
 				break;
 			}
 			state = STATE_COLLECT_MACRO_CONTENT;
@@ -159,6 +160,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 			{
 				print_error(sfname, line, return_value, line_number);
 				*error_return = return_value;
+				error_flag = 1;
 				break;
 			}
 			temp_macro_array = increment_macro_array_index(*macro_array, ++next_macro_index, &return_value);
@@ -173,7 +175,7 @@ int expand_macros_memory_allocated(char *sfname, char *dfname, FILE *fpin, FILE 
 		}
 	}
 	/* function ran successfully, error is saved into error_return */
-	return 0;
+	return error_flag;
 }
 
 char * expand_macros_handle_label(char *line, FILE *fpout)
@@ -231,6 +233,20 @@ int expand_macros_handle_command_state(char *line, FILE *fpout, Macro *macro_arr
 		return ERROR_WORD_FOUND_AFTER_MACR_KEYWORD;
 	strcpy((macro_array + next_macro_index)->name, word);
 	return STATE_COLLECT_MACRO_CONTENT;
+}
+
+long skip_line(char *line, FILE *fpin)
+{
+	long buffer = 0;
+	while (fgets(line, MAX_CHARS_IN_LINE + 1, fpin))
+	{
+		buffer += strlen(line);
+		if (strlen(line) == MAX_CHARS_IN_LINE)
+			continue;
+		break;
+	}
+	printf ("skipped %lu characters\n", buffer);
+	return buffer;
 }
 
 int expand_macros_handle_collect_macro_content_state(char *line, Macro *macro_array, int next_macro_index)

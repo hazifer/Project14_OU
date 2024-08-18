@@ -622,7 +622,7 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 			*error_return = ERROR_MISSING_ARGUMENTS;
 			return words_added;
 		}
-		word_len = read_word_delimited(line, src_argument, " \t,"); /* first word read must be greater than one length due to assumption */
+		word_len = read_word_delimited(line, src_argument, " \t\n,"); /* first word read must be greater than one length due to assumption */
 		line += word_len;
 		line = skip_blanks(line);
 		if (*line != ',')
@@ -635,7 +635,7 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 		}
 		++line;
 		line = skip_blanks(line);
-		word_len = read_word_delimited(line, dst_argument, " \t,"); /* second word read, after skipping blanks we expect a non ',' */
+		word_len = read_word_delimited(line, dst_argument, " \t\n,"); /* second word read, after skipping blanks we expect a non ',' */
 		if (!word_len)
 		{
 			*error_return = ERROR_CONSEQUTIVE_COMMAS;
@@ -728,7 +728,7 @@ int after_macro_save_command_arguments(char *line, int instruction_address, char
 			*error_return = ERROR_MISSING_ARGUMENTS;
 			return words_added;
 		}
-		word_len = read_word_delimited(line, dst_argument, " \t,"); /* must be greater than one length due to assumption */
+		word_len = read_word_delimited(line, dst_argument, " \t\n,"); /* must be greater than one length due to assumption */
 		line += word_len;
 		line = skip_blanks(line);
 		if (*line != '\n')
@@ -1247,7 +1247,14 @@ int read_immediate_addressing(char *word, int *word_value, int *error_return)
 		return 0;
 	}
 	while (isdigit(*int_str))
+	{
+		if (read_int * 10 + (*int_str - '0') > IMMEDIATE_OVERFLOW)
+		{
+			*error_return = ERROR_IMMEDIATE_OVERFLOW;
+			return 0;
+		}
 		read_int = read_int * 10 + (*int_str++ - '0');
+	}
 	if (*int_str)
 	{
 		*error_return = ERROR_IMMEDIATE_INVALID;

@@ -42,12 +42,18 @@ char * expand_macros_handle_label(char *line, FILE *fpout);
 int expand_macros_handle_command_state(char *line, FILE *fpout, Macro *macro_array, int next_macro_index);
 int expand_macros_handle_collect_macro_content_state(char *line, Macro *macro_array, int next_macro_index);
 
-/* verify_till_macr_word: reads line and returns a pointer to the first occurrence of "macr " or "macr\t" in line if exists 
+/* read_till_macr_word: reads line and returns a pointer to the first occurrence of "macr " or "macr\t" in line if exists 
  * returns NULL and raises an error of type ERROR_WORD_FOUND_PRE_MACRO_KEYWORD into out in case there a words prior to "macr " or "macr\t"
  * returns NULL if it doesn't exist */
 char * read_till_macr_keyword(char *line, int *error_return);
+
+/* read_till_macr_word: reads line and returns a pointer to the first occurrence of "endmacr" in line if exists
+ * returns NULL and sets errors into error_return when they occurr
+ * returns NULL if endmacr doesnt exist */
 char * read_till_endmacr_keyword(char *line, int *error_return);
 
+/* skip_line: read the line from fpin until the end, and returns after it was fully read */
+long skip_line(char *line, FILE *fpin);
 
 /* verify_macro_name_syntax: verifies if the macro name is in a correct format 
  * returns 1 if it is

@@ -1,17 +1,17 @@
-xd:.entry 	LIST
-xd:.extern	fn1
+.entry 	LIST
+.extern	fn1
 MAIN:	add r3, LIST
 	jsr fn1
 LOOP:	prn #48
 	macr mmacr
-	cmp r3 , #-6
+	cmp r3 , #-6   
 	bne END
 	endmacr
 	lea STR, r6
 	inc r6
 	mov *r6,L3
 	sub r1, r4
-	mmacr,
+	mmacr
 	add r7, *r6
 	clr K
 	sub L3, L3
