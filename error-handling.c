@@ -15,14 +15,42 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 		strcpy(output_message, WARN_BASE_STRING);
 		strcat(output_message, file_name);
 	}
+
 	
 	switch(error_type)
 	{	
+		case ERROR_IMMEDIATE_INVALID:
+			strcat(output_message, ": invalid immediate declared in line ");
+			break;
+		case ERROR_OBJECT_FILE_ACCESS:
+			strcat(output_message, ": couldn't open object file for writing\n");
+			break;
+		case ERROR_EXTERN_FILE_ACCESS:
+			strcat(output_message, ": couldn't open extern file for writing\n");
+			break;
+		case ERROR_ENTRY_FILE_ACCESS:
+			strcat(output_message, ": couldn't open entry file for writing\n");
+			break;
+		case ERROR_TERMINATE_ASSEMBLER:
+			strcat(output_message, ": critical error caused a termination for the assembler\n");
+			break;
+		case ERROR_LINE_TOO_LONG:
+			strcat(output_message, ": line exceeding valid length in line ");
+			break;
+		case ERROR_SOURCE_ADDRESSING_TYPE_INVALID:
+			strcat(output_message, ": source argument addressing type invalid for command in line ");
+			break;
+		case ERROR_DESTINATION_ADDRESSING_TYPE_INVALID:
+			strcat(output_message, ": destination argument addressing type invalid for command in line ");
+			break;
 		case WARN_LABEL_IN_ENTRY_EXTERN_LINE:
 			strcat(output_message, ": label preceding .extern or .entry declarations are ignored in line ");
 			break;
 		case ERROR_ENTRY_CHARACTERS_AFTER_LABEL:
 			strcat(output_message, ": characters detected after label in .entry declaration in line ");
+			break;
+		case ERROR_IMMEDIATE_OVERFLOW:
+			strcat(output_message, ": an immediate overflow detected in line ");
 			break;
 		case ERROR_CONSEQUTIVE_COMMAS:
 			strcat(output_message, ": consequtive commas detected in line ");
@@ -88,7 +116,6 @@ void print_error(char *file_name, char *line, int error_type, int line_number)
 			strcat(output_message, ": incorrect string format for .string declaration, missing quotes' end for string in line ");
 			break;
 		case ERROR_COMMAND_UNKNOWN:
-			/* add command to be logged? */
 			strcat(output_message, ": unknown command used in line ");
 			break;
 		case ERROR_MISSING_ARGUMENTS:

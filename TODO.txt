@@ -3,4 +3,3 @@
 	characters after arguments, seperated with comma, commas, multiple words more than needed etc
 -	cmp r3, -6 prints wrong error (about a non declared label)
 	don't fallback to non declared labels as error
--	handle max length inputs! lines, words

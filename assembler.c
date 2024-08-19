@@ -5,7 +5,7 @@
 int main(int argc, char *argv[])
 {
 	int error_return;
-	char *fname, after_macro_fname[MAX_FILENAME_LENGTH];
+	char fname[MAX_FILENAME_LENGTH + 3], after_macro_fname[MAX_FILENAME_LENGTH];
 	Label *labels = NULL;
 	Word *words = NULL;
 	while (argc-- > 1)
@@ -18,12 +18,15 @@ int main(int argc, char *argv[])
 			continue;
 		}
 		printf("beginning macro expansion for input \"%s\"\n", argv[argc]);
-		fname = handle_filename_extension(argv[argc], ".as", &error_return); /* &out ?? */
-		if (error_return)
-			continue;
+		strcpy(fname, argv[argc]);
+		strcat(fname, ".as");
 		expand_macros(fname, after_macro_fname, &error_return);
 		if (error_return)
 		{
+			if (labels)
+				free(labels);
+			if (words)
+				free(words);
 			continue;
 		}
 		printf("\tSuccess\n");
@@ -48,6 +51,5 @@ int main(int argc, char *argv[])
 		if (words)
 			free(words);
 	}
-	free(fname);
 	return 0;
 }
