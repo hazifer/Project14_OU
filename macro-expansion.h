@@ -67,13 +67,20 @@ char verify_macro_name_syntax(char *word);
 char get_macro_name_index(char *word, Macro *macro_array);
 
 /* allocate_macro_array_memory: allocates memory for an array of struct Macro elements.
- * each call increments the allocated member count by MACRO_ARRAY_INIT_SIZE
  * returns a pointer to the memory address of the allocated array
  * returns NULL on failure
- * raises an error of type ERROR_EXCEEDED_MACRO_ARRAY_LIMIT if there was an attemt to allocate too many elements, limited by MACRO_ARRAY_INIT_SIZE * MACRO_ARRAY_SIZE_MULTIPLIER_LIMIT */
+ * raises errors into error_return */
 Macro * allocate_macro_array_memory(Macro *macro_array, int *error_return);
+/* increment_macro_array_index: increments the next array cell index, and possibly reallocing memory block if needed for a bigger block to be used.
+ * returns a pointer to the memory address of the allocated array
+ * returns NULL on failure
+ * raises errors into error_return */
 Macro * increment_macro_array_index(Macro *macro_array, int next_macro_array, int *error_return);
+/* init_macro_array_memory: inits the memory allocation block for macro_array.
+ * returns a pointer to the memory address of the initiated array
+ * returns NULL on failure */
 Macro * init_macro_array_memory();
+/* reset_macro_array_indices: resets the memory allocation counter for macro_array (calls allocate_macro_array_memory() with NULL values) */
 void reset_macro_array_indices();
 
 /* expand_macro: expands a macro's contents into the output file */

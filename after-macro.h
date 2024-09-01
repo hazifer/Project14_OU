@@ -61,8 +61,16 @@ int begin_assembler(char *fname, char *after_macro_fname, Word **word_array, Lab
  * returns ERROR_TERMINATE_ASSEMBLER when any sort of memory allocation error has occurred */
 int first_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **labels);
 
+/* second_after_macro_scan: scans the input file after the macros were expanded, and after the first scan was made.
+ * assumes all lines' syntax is okay.
+ * returns 0 when no errors has occurred
+ * returns 1 when a code error has occurred */
 int second_after_macro_scan(FILE *fp, char *fname, Word **word_array, Label **label_array);
 
+/* second_scan_read_entry_declaration: receives a label name, and a label_array.
+ * this function is always called in the second scan, so all labels that it is called for are supposed to be of type entry.
+ * verifies the labels' existence in the label_array, returns errors accordingly.
+ * returns 0 and sets is_entry to 1 for the label. */
 int second_scan_read_entry_declaration(char *label_name, Label *label_array);
 
 /* second_scan_read_two_arguments: assumes line is pointing to properly syntaxed two arguemnts for a command of type command_type as input
@@ -134,22 +142,42 @@ int first_read_extern_declaration_data(char *line, int instruction_address, Labe
  * ERROR_PROGRAM_MEMORY_ALLOCATION */
 int save_label(char *input_label_name, Label **label_array, int instruction_address, int *stored_label_index);
 
+/* handle_syntax_post_relevant_arguments: handles syntax errors in two word commands
+ * returns the first syntax error found and returns its error_type
+ * returns 0 on successful line read */
 int handle_syntax_post_relevant_arguments(char *line);
 
+/* save_word: saves a word into word_array, incremending word_array_index.
+ * sets address, value, and type of word.
+ * also handles memory allocation by calling increment_word_array_index()
+ * returns error_type on failure 
+ * returns 0 on success */
 int save_word(int instruction_count, int value, char is_command, Word **word_array, int *word_array_index);
 
+/* increment_data_type_labels_address: increments all data_type labels' addresses by address_increment.
+ * this is done to seperate code and data in memory */
 void increment_data_type_labels_address(Label *label_array, int address_increment);
 
+/* skip_data_words: skips words from scanning word_array, by incrementing the word_array_index.
+ * returns the word_array_index after words skipped.
+ * the point is to avoid scanning words that are holding data / registers, as those aren't needed to be scanned in the second read */
 int skip_data_words(char *line, Word *word_array, int word_array_index, int command_type);
 
+/* skip_command_argument_words: skips words from scanning word_array, by incrementing the word_array_index.
+ * returns the word_array_index after words skipped.
+ * the point is to avoid scanning words that are holding data / registers, as those aren't needed to be scanned in the second read */
 int skip_command_argument_words(int word_array_index, Command current_command);
 
+/* second_read_entry_declaration: 
 int second_read_entry_declaration(char *label_name, Label *label_array);
+*/
 
 /* save_label_data_type: sets a label's data type by testing against a word input 
  * returns the type (although also stored into label_array[label_index]) */
 char save_label_data_type(Label *label_array, int label_index, char *word);
 
+/* get_declaration_type: get type of .extern .entry .data or .string command 
+ * returns the declaration type */
 char get_declaration_type(char *word);
 
 /* verify_label_syntax: verifies label syntax from beginning of line to end (which is assumed to be a pointer to the first ':' in line)
@@ -174,21 +202,51 @@ int is_word_label(char *word, Label **label_array);
 /* receives a possible op word, and returns it's decimal value opcode if it's an assembly word or -1 if it isn't */
 char get_command_op_code(char *op);
 
+/* create_object_file: creates an object file with the given input string a the base file name, using word_array as the words to be written into the file */
 int create_object_file(char *input, Word *word_array);
+/* create_extern_file: creates an extern file with the given input string a the base file name, using label_array as the labels to be written into the file, if of type extern */
 int create_extern_file(char *input, Label *label_array);
+/* create_entry_file: creates an entry file with the given input string a the base file name, using label_array as the labels to be written into the file, if of type entry */
 int create_entry_file(char *input, Label *label_array);
 
+/* init_label_array_memory: inits the memory allocation block for label_array.
+ * returns a pointer to the memory address of the initiated array
+ * returns NULL on failure */
 Label * init_label_array_memory();
+/* allocate_label_array_memory: allocates memory for an array of struct label elements.
+ * returns a pointer to the memory address of the allocated array
+ * returns NULL on failure
+ * raises errors into error_return */
 Label * allocate_label_array_memory(Label *label_array, int *error_return);
+/* increment_label_array_index: increments the next array cell index, and possibly reallocing memory block if needed for a bigger block to be used.
+ * returns a pointer to the memory address of the allocated array
+ * returns NULL on failure
+ * raises errors into error_return */
 Label * increment_label_array_index(Label *label_array, int next_label_index, int *error_return);
+/* reset_label_array_indices: resets the memory allocation counter for label_array (calls allocate_label_array_memory() with NULL values) */
 void reset_label_array_indices();
 
+/* init_word_array_index: inits the memory allocation block for word_array.
+ * returns a pointer to the memory address of the initiated array
+ * returns NULL on failure */
 Word * init_word_array_memory();
+/* allocate_word_array_memory: allocates memory for an array of struct Word elements.
+ * returns a pointer to the memory address of the allocated array
+ * returns NULL on failure
+ * raises errors into error_return */
 Word * allocate_word_array_memory(Word *word_array, int *error_return);
+/* increment_word_array_index: increments the next array cell index, and possibly reallocing memory block if needed for a bigger block to be used.
+ * returns a pointer to the memory address of the allocated array
+ * returns NULL on failure
+ * raises errors into error_return */
 Word * increment_word_array_index(Word *word_array, int next_word_index, int *error_return);
+/* reset_word_array_indices: resets the memory allocation counter for word_array (calls allocate_word_array_memory() with NULL values) */
 void reset_word_array_indices();
 
+/* print_labels: prints labels with a non zero address set */
 void print_labels(Label *label_array);
+
+/* print_words: prints words with a non zero address set */
 void print_words(Word *word_array);
 
 /* is_label_type_exist: reads the label_array and returns 1 upon finding a label of the input type
